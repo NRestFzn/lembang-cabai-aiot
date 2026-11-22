@@ -1,0 +1,492 @@
+:root {
+  --paper: #f2efe7;
+  --panel: #fbf8f0;
+  --soft: #ebe6da;
+  --ink: #231e16;
+  --muted: #665f53;
+  --rule: #dcd4c4;
+  --accent: #6cc29f;
+  --accent-soft: #d9efe5;
+  --stage-bg: #f4f0e6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink);
+  background-color: var(--paper);
+}
+
+.theme-root {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: var(--stage-bg);
+  color: var(--ink);
+  transition: background-color 0.45s ease, color 0.45s ease;
+}
+
+/* Subtle Colorfigures archival paper grain overlay */
+.paper-grain {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+}
+
+/* Fullscreen 3D Canvas Stage */
+.full-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.viewport-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+
+.viewport-shell:active {
+  cursor: grabbing;
+}
+
+.svg-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Projected 3D Labels (only shown when Label toggle is ON) */
+.labels-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.pin-label {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1.5px solid var(--ink);
+  background: var(--panel);
+  color: var(--ink);
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 2px 2px 0 var(--ink);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pin-label.is-selected {
+  background: var(--ink);
+  color: var(--panel);
+}
+
+.pin-code {
+  opacity: 0.65;
+  font-size: 10px;
+}
+
+/* Minimal Top-Left Brand Pill */
+.top-brand {
+  position: absolute;
+  top: 18px;
+  left: 20px;
+  z-index: 15;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1.5px solid var(--ink);
+  border-radius: 14px;
+  padding: 10px 15px;
+  box-shadow: 3px 3px 0 var(--ink);
+  pointer-events: none;
+}
+
+.brand-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.brand-sub {
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.phase-dot {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--ink);
+  background: var(--accent-soft);
+  color: #1f1a14;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+/* Minimal Top-Right Telemetry Card */
+.top-stats {
+  position: absolute;
+  top: 18px;
+  right: 20px;
+  z-index: 15;
+  display: flex;
+  gap: 18px;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1.5px solid var(--ink);
+  border-radius: 14px;
+  padding: 10px 16px;
+  box-shadow: 3px 3px 0 var(--ink);
+  pointer-events: none;
+}
+
+.theme-root[data-night='true'] .stat-value {
+  color: #f2ede2;
+}
+
+.theme-root[data-night='true'] .stat-value.is-danger {
+  color: #ff7b61;
+}
+
+.theme-root[data-night='true'] .stat-value.is-ok {
+  color: #5ee0a6;
+}
+
+.theme-root[data-night='true'] .stat-label {
+  color: #b8c2db;
+}
+
+.stat-item {
+  text-align: right;
+}
+
+.stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.stat-value {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 19px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  color: var(--ink);
+}
+
+.stat-value.is-danger {
+  color: #ef5b3c;
+}
+
+.stat-value.is-ok {
+  color: #3da87a;
+}
+
+/* Right-Side Info Modal (for Clicked Leaf OR Clicked Hardware Part) */
+.info-modal {
+  position: absolute;
+  top: 96px;
+  right: 20px;
+  z-index: 20;
+  width: 340px;
+  max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 196px);
+  overflow-y: auto;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1.5px solid var(--ink);
+  border-radius: 16px;
+  box-shadow: 5px 5px 0 var(--ink);
+  padding: 16px 18px;
+}
+
+.modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.modal-eyebrow {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.modal-title {
+  margin: 2px 0 0;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.close-btn {
+  border: 1px solid var(--rule);
+  background: var(--soft);
+  color: var(--ink);
+  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.condition-pill {
+  margin-top: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1.5px solid var(--ink);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #1e1913;
+}
+
+.swatch-circle {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid #231e16;
+  flex-shrink: 0;
+}
+
+.modal-block {
+  margin-top: 12px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.modal-block-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 3px;
+}
+
+.modal-mini-grid {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.mini-cell {
+  background: var(--soft);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.mini-cell span {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+
+.modal-footer {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Behavior Nudge Toast (clean bottom-left notification) */
+.nudge-toast {
+  position: absolute;
+  bottom: 84px;
+  left: 20px;
+  z-index: 18;
+  max-width: 390px;
+  padding: 12px 15px;
+  border-radius: 14px;
+  border: 1.5px solid var(--ink);
+  box-shadow: 4px 4px 0 var(--ink);
+  background: var(--panel);
+  color: var(--ink);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.nudge-toast.tone-warn {
+  background: #fde5ce;
+  color: #231e16;
+  border-color: #231e16;
+  box-shadow: 4px 4px 0 #231e16;
+}
+
+.nudge-toast.tone-good {
+  background: #d9efe5;
+  color: #231e16;
+  border-color: #231e16;
+  box-shadow: 4px 4px 0 #231e16;
+}
+
+.nudge-title {
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.nudge-detail {
+  font-size: 13px;
+  margin-top: 3px;
+  line-height: 1.45;
+}
+
+/* Clean Centered Bottom Control Dock */
+.bottom-dock {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 18;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: 4px 4px 0 var(--ink);
+}
+
+.dock-btn {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1.5px solid var(--ink);
+  background: var(--soft);
+  color: var(--ink);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 0.1s ease, background 0.15s ease;
+}
+
+.dock-btn:hover {
+  transform: translateY(-1px);
+}
+
+.dock-btn.is-primary {
+  background: var(--accent);
+  color: #191611;
+}
+
+.dock-btn.is-active {
+  background: var(--ink);
+  color: var(--panel);
+}
+
+.dock-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--rule);
+}
+
+.time-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.time-text {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  min-width: 44px;
+}
+
+.time-slider {
+  width: 120px;
+  accent-color: var(--ink);
+  cursor: pointer;
+}
+
+@media (max-width: 780px) {
+  .top-brand {
+    top: 12px;
+    left: 12px;
+    padding: 8px 12px;
+  }
+  .top-stats {
+    top: 12px;
+    right: 12px;
+    padding: 8px 12px;
+    gap: 12px;
+  }
+  .stat-value {
+    font-size: 16px;
+  }
+  .bottom-dock {
+    border-radius: 18px;
+    bottom: 12px;
+    padding: 8px 10px;
+    gap: 7px;
+  }
+  .dock-divider {
+    display: none;
+  }
+  .info-modal {
+    top: auto;
+    bottom: 92px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-height: 46vh;
+  }
+}
