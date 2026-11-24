@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { PART_ORDER, PARTS_INFO } from '../data/parts';
-import { buildGardenScene, GardenSceneController, PickResult } from '../three/buildGardenScene';
+import { buildGardenScene, GardenSceneController, HotspotItem, PickResult } from '../three/buildGardenScene';
 import {
   AccentId,
   CameraPreset,
@@ -21,6 +21,18 @@ interface ProjectedLabel {
   visible: boolean;
 }
 
+interface ProjectedHotspot {
+  key: string;
+  kind: 'part' | 'leaf';
+  partId: PartId;
+  leaf?: SelectedLeafInfo;
+  ringColor: string;
+  title: string;
+  x: number;
+  y: number;
+  visible: boolean;
+}
+
 interface GardenViewportProps {
   metrics: SimulationMetrics;
   weather: WeatherMode;
@@ -28,6 +40,7 @@ interface GardenViewportProps {
   exploded: boolean;
   showFov: boolean;
   showLabels: boolean;
+  showHighlights: boolean;
   cameraPreset: CameraPreset;
   resetTrigger: number;
   selectedPart: PartId | null;
@@ -48,7 +61,7 @@ const SHORT_LABEL: Record<PartId, string> = {
   solar: 'SOLAR 10W',
   enclosure: 'ESP32 BOX',
   esp32cam: 'ESP32-CAM',
-  dht22: 'DHT22 KANOPI',
+  dht22: 'BME280 KANOPI',
   soil_probe: 'SOIL PROBE',
   solenoid: 'SOLENOID',
   pump: 'POMPA',
@@ -63,6 +76,7 @@ export const GardenViewport: React.FC<GardenViewportProps> = ({
   exploded,
   showFov,
   showLabels,
+  showHighlights,
   cameraPreset,
   resetTrigger,
   selectedPart,
@@ -85,6 +99,7 @@ export const GardenViewport: React.FC<GardenViewportProps> = ({
     exploded,
     showFov,
     showLabels,
+    showHighlights,
     selectedPart,
     selectedLeaf,
   });
@@ -95,6 +110,7 @@ export const GardenViewport: React.FC<GardenViewportProps> = ({
     exploded,
     showFov,
     showLabels,
+    showHighlights,
     selectedPart,
     selectedLeaf,
   };
@@ -105,6 +121,7 @@ export const GardenViewport: React.FC<GardenViewportProps> = ({
   onSelectLeafRef.current = onSelectLeaf;
 
   const [labels, setLabels] = useState<ProjectedLabel[]>([]);
+  const [hotspots, setHotspots] = useState<ProjectedHotspot[]>([]);
 
   // Trigger smooth camera transition on preset change or reset
   useEffect(() => {
@@ -132,7 +149,7 @@ export const GardenViewport: React.FC<GardenViewportProps> = ({
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     container.appendChild(renderer.domElement);
 
-    const camera = new THREE.PerspectiveCamera(34, width / height, 0.1, 60);
+    const camera = new THREE.PerspectiveCamera(34, width / height, 0.03, 70);
     camera.position.set(...CAMERA_PRESETS.iso.pos);
     cameraRef.current = camera;
 
@@ -140,10 +157,12 @@ export const GardenViewport: React.FC<GardenViewportProps> = ({
     controls.target.set(...CAMERA_PRESETS.iso.target);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
-    controls.minDistance = 3.2;
-    controls.maxDistance = 14.5;
-    controls.maxPolarAngle = Math.PI / 2 - 0.06;
-    controls.minPolarAngle = 0.25;
+    controls.enablePan = true;
+    controls.zoomSpeed = 1.25;
+    controls.minDistance = 0.45;
+    controls.maxDistance = 15.0;
+    controls.maxPolarAngle = Math.PI / 2 - 0.02;
+    controls.minPolarAngle = 0.1;
     controlsRef.current = controls;
 
     // Cancel preset lerp when user grabs camera manually
@@ -152,6 +171,38 @@ export const GardenViewport: React.FC<GardenViewportProps> = ({
       targetLookAtRef.current = null;
     };
     controls.addEventListener('start', cancelPresetLerp);
+
+    // WASD + Arrow + Q/E smooth movement
+    const keysDown = new Set<string>();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLTextAreaElement) return;
+      if (e.target instanceof HTMLInputElement && e.target.type !== 'range') return;
+      const code = e.code;
+      if (
+        code === 'KeyW' ||
+        code === 'KeyA' ||
+        code === 'KeyS' ||
+        code === 'KeyD' ||
+        code === 'KeyQ' ||
+        code === 'KeyE' ||
+        code === 'ArrowUp' ||
+        code === 'ArrowDown' ||
+        code === 'ArrowLeft' ||
+        code === 'ArrowRight'
+      ) {
+        keysDown.add(code);
+        cancelPresetLerp();
+      }
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      keysDown.delete(e.code);
+    };
+    const handleWindowBlur = () => {
+      keysDown.clear();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', handleWindowBlur);
 
     const garden = buildGardenScene();
     controllerRef.current = garden;
@@ -205,6 +256,9 @@ export const GardenViewport: React.FC<GardenViewportProps> = ({
     let elapsed = 0;
     let labelTick = 0.05;
     const tempVec = new THREE.Vector3();
+    const forwardVec = new THREE.Vector3();
+    const rightVec = new THREE.Vector3();
+    const moveVec = new THREE.Vector3();
 
     const animate = (now: number) => {
       animId = requestAnimationFrame(animate);
@@ -218,6 +272,37 @@ export const GardenViewport: React.FC<GardenViewportProps> = ({
         if (camera.position.distanceTo(targetCamPosRef.current) < 0.03) {
           targetCamPosRef.current = null;
           targetLookAtRef.current = null;
+        }
+      } else if (keysDown.size > 0) {
+        camera.getWorldDirection(forwardVec);
+        forwardVec.y = 0;
+        if (forwardVec.lengthSq() > 0.0001) forwardVec.normalize();
+        rightVec.crossVectors(forwardVec, camera.up).normalize();
+
+        moveVec.set(0, 0, 0);
+        if (keysDown.has('KeyW') || keysDown.has('ArrowUp')) moveVec.add(forwardVec);
+        if (keysDown.has('KeyS') || keysDown.has('ArrowDown')) moveVec.sub(forwardVec);
+        if (keysDown.has('KeyD') || keysDown.has('ArrowRight')) moveVec.add(rightVec);
+        if (keysDown.has('KeyA') || keysDown.has('ArrowLeft')) moveVec.sub(rightVec);
+        if (keysDown.has('KeyE')) moveVec.y += 0.7;
+        if (keysDown.has('KeyQ')) moveVec.y -= 0.7;
+
+        if (moveVec.lengthSq() > 0) {
+          const distScale = THREE.MathUtils.clamp(camera.position.distanceTo(controls.target) * 0.65, 1.4, 4.5);
+          moveVec.normalize().multiplyScalar(distScale * dt);
+
+          const nextTargetX = THREE.MathUtils.clamp(controls.target.x + moveVec.x, -4.8, 4.8);
+          const nextTargetY = THREE.MathUtils.clamp(controls.target.y + moveVec.y, -0.25, 3.2);
+          const nextTargetZ = THREE.MathUtils.clamp(controls.target.z + moveVec.z, -4.0, 4.0);
+
+          const dx = nextTargetX - controls.target.x;
+          const dy = nextTargetY - controls.target.y;
+          const dz = nextTargetZ - controls.target.z;
+
+          controls.target.set(nextTargetX, nextTargetY, nextTargetZ);
+          camera.position.x += dx;
+          camera.position.y = Math.max(0.05, camera.position.y + dy);
+          camera.position.z += dz;
         }
       }
 
@@ -237,27 +322,51 @@ export const GardenViewport: React.FC<GardenViewportProps> = ({
       );
       renderer.render(garden.scene, camera);
 
-      // Update projected 2D labels ~20fps to keep React light
+      // Update projected 2D labels & circular hotspots ~20fps to keep React light
       labelTick += dt;
-      if (s.showLabels && labelTick >= 0.05) {
+      if ((s.showLabels || s.showHighlights) && labelTick >= 0.05) {
         labelTick = 0;
         const w = container.clientWidth;
         const h = container.clientHeight;
-        const nextLabels: ProjectedLabel[] = PART_ORDER.map((id) => {
-          const info = PARTS_INFO[id];
-          tempVec.set(...info.anchorLocal);
-          tempVec.project(camera);
-          const visible = tempVec.z < 1 && tempVec.x > -0.95 && tempVec.x < 0.95 && tempVec.y > -0.95 && tempVec.y < 0.95;
-          return {
-            id,
-            code: info.code,
-            label: SHORT_LABEL[id],
-            x: (tempVec.x * 0.5 + 0.5) * w,
-            y: (-tempVec.y * 0.5 + 0.5) * h,
-            visible,
-          };
-        });
-        setLabels(nextLabels);
+
+        if (s.showLabels) {
+          const nextLabels: ProjectedLabel[] = PART_ORDER.filter((id) => id !== 'terrace').map((id) => {
+            const info = PARTS_INFO[id];
+            tempVec.set(...info.anchorLocal);
+            tempVec.project(camera);
+            const visible = tempVec.z < 1 && tempVec.x > -0.95 && tempVec.x < 0.95 && tempVec.y > -0.95 && tempVec.y < 0.95;
+            return {
+              id,
+              code: info.code,
+              label: SHORT_LABEL[id],
+              x: (tempVec.x * 0.5 + 0.5) * w,
+              y: (-tempVec.y * 0.5 + 0.5) * h,
+              visible,
+            };
+          });
+          setLabels(nextLabels);
+        }
+
+        if (s.showHighlights) {
+          const rawHotspots: HotspotItem[] = garden.getHotspots();
+          const nextHotspots: ProjectedHotspot[] = rawHotspots.map((hs) => {
+            tempVec.set(...hs.worldPos);
+            tempVec.project(camera);
+            const visible = tempVec.z < 1 && tempVec.x > -0.95 && tempVec.x < 0.95 && tempVec.y > -0.95 && tempVec.y < 0.95;
+            return {
+              key: hs.key,
+              kind: hs.kind,
+              partId: hs.partId,
+              leaf: hs.leaf,
+              ringColor: hs.ringColor ?? '#fbf8f0',
+              title: hs.kind === 'leaf' && hs.leaf ? `Cek kondisi daun Pohon #${hs.leaf.plantIndex + 1}` : PARTS_INFO[hs.partId].name,
+              x: (tempVec.x * 0.5 + 0.5) * w,
+              y: (-tempVec.y * 0.5 + 0.5) * h,
+              visible,
+            };
+          });
+          setHotspots(nextHotspots);
+        }
       }
     };
 
@@ -267,6 +376,9 @@ export const GardenViewport: React.FC<GardenViewportProps> = ({
       cancelAnimationFrame(animId);
       resizeObserver.disconnect();
       controls.removeEventListener('start', cancelPresetLerp);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', handleWindowBlur);
       renderer.domElement.removeEventListener('pointerdown', handlePointerDown);
       renderer.domElement.removeEventListener('pointerup', handlePointerUp);
       controls.dispose();
@@ -289,6 +401,36 @@ export const GardenViewport: React.FC<GardenViewportProps> = ({
           </filter>
         </defs>
       </svg>
+
+      {showHighlights && (
+        <div className="hotspots-layer">
+          {hotspots.map((hs) => {
+            if (!hs.visible) return null;
+            const isSelected =
+              hs.kind === 'leaf'
+                ? selectedLeaf?.plantIndex === hs.leaf?.plantIndex
+                : !selectedLeaf && selectedPart === hs.partId;
+            return (
+              <button
+                key={hs.key}
+                type="button"
+                title={hs.title}
+                aria-label={hs.title}
+                className={`hotspot-ring ${hs.kind === 'leaf' ? 'is-leaf' : 'is-part'} ${
+                  isSelected ? 'is-selected' : ''
+                }`}
+                style={{ left: `${hs.x}px`, top: `${hs.y}px` }}
+                onClick={() => {
+                  onSelectPart(hs.partId);
+                  onSelectLeaf(hs.leaf ?? null);
+                }}
+              >
+                <span className="hotspot-dot" style={{ backgroundColor: hs.ringColor }} />
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {showLabels && (
         <div className="labels-layer" style={{ filter: wobbleAmount > 0 ? 'url(#risowobble)' : undefined }}>

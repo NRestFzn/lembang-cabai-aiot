@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { CircuitPage } from './components/CircuitPage';
 import { GardenViewport } from './components/GardenViewport';
+import { PhysicalNodePage } from './components/PhysicalNodePage';
 import { LEAF_CONDITION_META, PARTS_INFO } from './data/parts';
 import {
   computeMicroclimate,
@@ -40,11 +42,24 @@ const INITIAL_METRICS: SimulationMetrics = {
   offlineBufferedCount: 12,
 };
 
+export type AppPage = 'diorama' | 'circuit' | 'unit';
+
+const getInitialPage = (): AppPage => {
+  if (typeof window !== 'undefined') {
+    if (window.location.hash === '#rangkaian') return 'circuit';
+    if (window.location.hash === '#alat') return 'unit';
+  }
+  return 'diorama';
+};
+
 export const App: React.FC = () => {
+  const [activePage, setActivePage] = useState<AppPage>(getInitialPage);
+  const [isCircuitAnimating, setIsCircuitAnimating] = useState(false);
   const [metrics, setMetrics] = useState<SimulationMetrics>(INITIAL_METRICS);
   const [weather, setWeather] = useState<WeatherMode>('sunny');
   const [exploded, setExploded] = useState(false);
   const [showLabels, setShowLabels] = useState(false);
+  const [showHighlights, setShowHighlights] = useState(true);
   const [cameraPreset, setCameraPreset] = useState<CameraPreset>('iso');
   const [resetTrigger, setResetTrigger] = useState(0);
   const [selectedPart, setSelectedPart] = useState<PartId | null>(null);
@@ -161,64 +176,116 @@ export const App: React.FC = () => {
     setResetTrigger((n) => n + 1);
   };
 
+  const handleSwitchPage = (page: AppPage) => {
+    setActivePage(page);
+    if (typeof window !== 'undefined') {
+      const nextHash = page === 'circuit' ? '#rangkaian' : page === 'unit' ? '#alat' : '#diorama';
+      window.history.replaceState(null, '', nextHash);
+    }
+  };
+
   const leafMeta = selectedLeaf ? LEAF_CONDITION_META[selectedLeaf.condition] : null;
   const partMeta = !selectedLeaf && selectedPart ? PARTS_INFO[selectedPart] : null;
   const dayPhase = getDayPhaseLabel(metrics.timeHours);
   const weatherLabel = weather === 'sunny' ? 'Cerah' : weather === 'foggy' ? 'Kabut' : 'Hujan';
+
+  const hideTopChrome = activePage === 'circuit' && isCircuitAnimating;
 
   return (
     <div style={themeVars} className="theme-root" data-night={isNight ? 'true' : 'false'}>
       <div className="paper-grain" />
 
       <main className="full-stage">
-        {/* Minimal Top-Left Header */}
-        <header className="top-brand">
-          <h1 className="brand-title">Lembang Cabai · AIoT Node</h1>
-          <div className="brand-sub">
-            <span>{formatSimTime(metrics.timeHours)}</span>
-            <span className="phase-dot">{dayPhase}</span>
-            <span>{weatherLabel}</span>
-          </div>
-        </header>
+        {!hideTopChrome && (
+          <>
+            {/* Minimal Top-Left Header */}
+            <header className="top-brand">
+              <h1 className="brand-title">Lembang Cabai · AIoT Node</h1>
+              <div className="brand-sub">
+                <span>{formatSimTime(metrics.timeHours)}</span>
+                <span className="phase-dot">{dayPhase}</span>
+                <span>{weatherLabel}</span>
+              </div>
+            </header>
 
-        {/* Minimal Top-Right Telemetry */}
-        <div className="top-stats">
-          <div className="stat-item">
-            <div className="stat-label">Tanah</div>
-            <div className="stat-value">{Math.round(metrics.soilMoisturePct)}%</div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-label">Daun Basah</div>
-            <div className="stat-value">{metrics.leafWetnessPct}%</div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-label">Risiko Patek</div>
-            <div
-              className={`stat-value ${
-                metrics.patekRiskPct >= 65 ? 'is-danger' : metrics.patekRiskPct <= 30 ? 'is-ok' : ''
-              }`}
-            >
-              {metrics.patekRiskPct}%
+            {/* Top-Center Page Switcher */}
+            <nav className="page-switch" aria-label="Navigasi Halaman">
+              <button
+                type="button"
+                className={`page-switch-btn ${activePage === 'diorama' ? 'is-active' : ''}`}
+                onClick={() => {
+                  setIsCircuitAnimating(false);
+                  handleSwitchPage('diorama');
+                }}
+              >
+                Diorama 3D
+              </button>
+              <button
+                type="button"
+                className={`page-switch-btn ${activePage === 'circuit' ? 'is-active' : ''}`}
+                onClick={() => handleSwitchPage('circuit')}
+              >
+                Rangkaian Prototype
+              </button>
+              <button
+                type="button"
+                className={`page-switch-btn ${activePage === 'unit' ? 'is-active' : ''}`}
+                onClick={() => {
+                  setIsCircuitAnimating(false);
+                  handleSwitchPage('unit');
+                }}
+              >
+                Alat Asli
+              </button>
+            </nav>
+
+            {/* Minimal Top-Right Telemetry */}
+            <div className="top-stats">
+              <div className="stat-item">
+                <div className="stat-label">Tanah</div>
+                <div className="stat-value">{Math.round(metrics.soilMoisturePct)}%</div>
+              </div>
+              <div className="stat-item">
+                <div className="stat-label">Daun Basah</div>
+                <div className="stat-value">{metrics.leafWetnessPct}%</div>
+              </div>
+              <div className="stat-item">
+                <div className="stat-label">Risiko Patek</div>
+                <div
+                  className={`stat-value ${
+                    metrics.patekRiskPct >= 65 ? 'is-danger' : metrics.patekRiskPct <= 30 ? 'is-ok' : ''
+                  }`}
+                >
+                  {metrics.patekRiskPct}%
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          </>
+        )}
 
-        {/* Fullscreen 3D Scene */}
-        <GardenViewport
-          metrics={metrics}
-          weather={weather}
-          accent="mint"
-          exploded={exploded}
-          showFov={selectedPart === 'esp32cam'}
-          showLabels={showLabels}
-          cameraPreset={cameraPreset}
-          resetTrigger={resetTrigger}
-          selectedPart={selectedPart}
-          selectedLeaf={selectedLeaf}
-          onSelectPart={handleSelectPart}
-          onSelectLeaf={handleSelectLeaf}
-          wobbleAmount={1}
-        />
+        {activePage === 'circuit' ? (
+          <CircuitPage metrics={metrics} onAnimationChange={setIsCircuitAnimating} />
+        ) : activePage === 'unit' ? (
+          <PhysicalNodePage metrics={metrics} />
+        ) : (
+          <>
+            {/* Fullscreen 3D Scene */}
+            <GardenViewport
+              metrics={metrics}
+              weather={weather}
+              accent="mint"
+              exploded={exploded}
+              showFov={selectedPart === 'esp32cam'}
+              showLabels={showLabels}
+              showHighlights={showHighlights}
+              cameraPreset={cameraPreset}
+              resetTrigger={resetTrigger}
+              selectedPart={selectedPart}
+              selectedLeaf={selectedLeaf}
+              onSelectPart={handleSelectPart}
+              onSelectLeaf={handleSelectLeaf}
+              wobbleAmount={1}
+            />
 
         {/* Right-Side Modal: Leaf Diagnosis OR Clicked Sensor/Part Info */}
         {selectedLeaf && leafMeta && (
@@ -226,7 +293,8 @@ export const App: React.FC = () => {
             <div className="modal-head">
               <div>
                 <div className="modal-eyebrow">
-                  Pohon #{selectedLeaf.plantIndex + 1} · {selectedLeaf.terrace}
+                  Pohon #{selectedLeaf.plantIndex + 1} · {selectedLeaf.terrace} ·{' '}
+                  {selectedLeaf.plantIndex < 2 ? 'Pantauan CAM' : 'Sampel Non-CAM'}
                 </div>
                 <h2 className="modal-title">Kondisi Daun #{selectedLeaf.leafIndex + 1}</h2>
               </div>
@@ -261,8 +329,12 @@ export const App: React.FC = () => {
               <div className="mini-cell">
                 <span>ESP32-CAM</span>
                 <strong>
-                  {selectedLeaf.condition === 'patek_early' || selectedLeaf.condition === 'yellowing'
+                  {selectedLeaf.plantIndex >= 2
+                    ? 'Di Luar FOV CAM'
+                    : selectedLeaf.condition === 'patek_early' || selectedLeaf.condition === 'yellowing'
                     ? 'Anomali Visual'
+                    : selectedLeaf.condition === 'wet_risk'
+                    ? 'Daun Berembun'
                     : 'Normal'}
                 </strong>
               </div>
@@ -306,6 +378,11 @@ export const App: React.FC = () => {
             </div>
 
             <div className="modal-block">
+              <span className="modal-block-label">Fungsi Alat</span>
+              {partMeta.role}
+            </div>
+
+            <div className="modal-block">
               <span className="modal-block-label">Lokasi Penempatan</span>
               {partMeta.placement}
             </div>
@@ -321,19 +398,6 @@ export const App: React.FC = () => {
               </button>
             </div>
           </aside>
-        )}
-
-        {/* Watering / Behavior Nudge Toast */}
-        {nudge && (
-          <div className={`nudge-toast tone-${nudge.tone}`}>
-            <div>
-              <div className="nudge-title">{nudge.title}</div>
-              <div className="nudge-detail">{nudge.detail}</div>
-            </div>
-            <button type="button" className="close-btn" onClick={() => setNudge(null)}>
-              ✕
-            </button>
-          </div>
         )}
 
         {/* Simple Bottom Control Dock */}
@@ -379,6 +443,13 @@ export const App: React.FC = () => {
           </button>
           <button
             type="button"
+            className={`dock-btn ${showHighlights ? 'is-active' : ''}`}
+            onClick={() => setShowHighlights((v) => !v)}
+          >
+            Highlight
+          </button>
+          <button
+            type="button"
             className={`dock-btn ${showLabels ? 'is-active' : ''}`}
             onClick={() => setShowLabels((v) => !v)}
           >
@@ -388,6 +459,21 @@ export const App: React.FC = () => {
             Reset Kamera
           </button>
         </nav>
+          </>
+        )}
+
+        {/* Watering / Behavior Nudge Toast */}
+        {nudge && (
+          <div className={`nudge-toast tone-${nudge.tone}`}>
+            <div>
+              <div className="nudge-title">{nudge.title}</div>
+              <div className="nudge-detail">{nudge.detail}</div>
+            </div>
+            <button type="button" className="close-btn" onClick={() => setNudge(null)}>
+              ✕
+            </button>
+          </div>
+        )}
       </main>
     </div>
   );

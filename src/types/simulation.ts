@@ -31,6 +31,7 @@ export interface PartInfo {
   id: PartId;
   code: string;
   name: string;
+  role: string;
   placement: string;
   whyHere: string;
   spec: string;
