@@ -1,0 +1,161 @@
+// Power chain: the overview plus the solar harvest / MPPT / battery /
+// 5V regulation steps (tour stages 01–04), along the top of the board.
+import { col, Z_B, Z_C, Z_D, Z_E, Z_J } from './tourLayout';
+import { CircuitTourStep } from './tourTypes';
+
+export const TOUR_STEPS_POWER: CircuitTourStep[] = [
+  {
+    id: 'overview',
+    part: 'OVERVIEW',
+    stage: 'Arsitektur Node AIoT Lembang',
+    title: 'Rangkaian Terintegrasi Sentinel Cabai',
+    description:
+      'Semua modul terpasang rapi di atas satu breadboard utama: jalur panen daya surya 12.8V di sisi atas, regulasi 5V/3.3V ke ESP32 dan sensor di tengah, hingga saklar relay pompa & solenoid di kanan.',
+    flowSummary: 'Solar 6V → CN3791 MPPT → Baterai 12.8V → LM2596 5V → ESP32 & Aktuator',
+    accentColor: '#10b981',
+    target: [-0.2, 0.2, 0.45],
+    camPos: [-0.2, 37.5, 1.0],
+    ringPos: [0, 0.25, 0],
+    frameSize: [0, 0],
+    flowPaths: [
+      [
+        [-9.08, 0.25, -4.3],
+        [-7.21, 0.285, -4.34],
+      ],
+      [
+        [-2.76, 0.32, -4.2],
+        [-2.76, 0.1, -3.08],
+        [col(4), 0.5, Z_D],
+        [-3.65, 0.24, -5.35],
+        [1.17, 0.285, -4.34],
+      ],
+      [
+        [3.63, 0.285, -4.34],
+        [3.92, 0.12, -3.12],
+        [col(37), 0.46, Z_J],
+        [col(31), 0.46, Z_J],
+      ],
+    ],
+    durationSec: 4.5,
+  },
+  {
+    id: 'solar',
+    part: 'SOLAR',
+    stage: '01 / 12 · Panen Energi',
+    title: 'Panel Surya 6V / 10W',
+    description:
+      'Dipasang di puncak tiang node (~1,6 m) untuk memanen energi matahari sepanjang hari. Output DC (PV+ merah, PV- hitam) langsung mengalir menuju modul CN3791 MPPT charger.',
+    flowSummary: 'Panel Surya (PV+ / PV-) → CN3791 MPPT Charger',
+    accentColor: '#f59e0b',
+    target: [-8.2, 0.2, -3.7],
+    camPos: [-8.2, 12.2, -3.35],
+    ringPos: [-10.0, 0.28, -4.2],
+    frameSize: [2.75, 2.25],
+    flowPaths: [
+      [
+        [-9.08, 0.25, -4.3],
+        [-7.21, 0.285, -4.34],
+      ],
+    ],
+    durationSec: 5.5,
+  },
+  {
+    id: 'mppt',
+    part: 'MPPT',
+    stage: '02 / 12 · MPPT & Charging',
+    title: 'CN3791 MPPT Solar Charger',
+    description:
+      'Melacak titik daya maksimum saat cuaca Lembang mendung atau berkabut agar pengisian tetap optimal, lalu menyalurkan daya aman via bus BAT+ (kolom 4) & BAT- (kolom 13) ke paket baterai.',
+    flowSummary: 'PV Input → CN3791 MPPT → Bus BAT+ (Kolom 4) & BAT- (Kolom 13)',
+    accentColor: '#f59e0b',
+    target: [-5.1, 0.2, -2.9],
+    camPos: [-5.1, 11.4, -2.55],
+    ringPos: [-6.2, 0.32, -4.2],
+    frameSize: [2.42, 1.72],
+    flowPaths: [
+      [
+        [-5.19, 0.285, -4.34],
+        [-5.02, 0.1, -2.86],
+        [col(4) - 0.14, 0.44, -2.86],
+        [col(4), 0.44, Z_B],
+        [col(4), 0.5, Z_C],
+        [col(4), 0.5, -3.08],
+        [-2.76, 0.1, -3.08],
+        [-2.76, 0.32, -4.2],
+      ],
+    ],
+    durationSec: 6.0,
+  },
+  {
+    id: 'battery',
+    part: 'BATTERY',
+    stage: '03 / 12 · Penyimpanan Daya 12.8V',
+    title: 'Paket Baterai LiFePO4 4S 12.8V (6000mAh)',
+    description:
+      'Menyimpan cadangan energi 76.8Wh yang tahan suhu dingin. Jalur positif 12.8V di kolom 4 memasok dua cabang: ke step-down LM2596 (untuk ESP32) dan langsung ke Relay COM1 untuk beban 12V.',
+    flowSummary: 'Baterai 12.8V+ (Kolom 4) → LM2596 IN+ & Relay COM1',
+    accentColor: '#ef4444',
+    target: [-1.4, 0.2, -3.1],
+    camPos: [-1.4, 13.0, -2.7],
+    ringPos: [-1.8, 0.32, -4.2],
+    frameSize: [2.56, 1.32],
+    flowPaths: [
+      [
+        [-2.76, 0.32, -4.2],
+        [-2.76, 0.1, -3.08],
+        [col(4), 0.5, -3.08],
+        [col(4), 0.56, Z_D],
+        [col(3), 0.56, -2.64],
+        [-3.65, 0.24, -2.64],
+        [-3.65, 0.24, -5.35],
+        [0.85, 0.1, -5.35],
+        [0.85, 0.285, -4.34],
+        [1.17, 0.285, -4.34],
+      ],
+      [
+        [col(4), 0.62, Z_E],
+        [col(4) + 0.14, 0.3, -2.5],
+        [-3.45, 0.3, -2.5],
+        [-3.45, 0.1, -5.58],
+        [8.62, 0.1, -5.58],
+        [8.62, 0.34, -4.56],
+        [8.43, 0.27, -4.56],
+      ],
+    ],
+    durationSec: 6.5,
+  },
+  {
+    id: 'lm2596',
+    part: 'LM2596',
+    stage: '04 / 12 · Regulasi 12.8V → 5.00V',
+    title: 'Buck Converter LM2596 (5.00V)',
+    description:
+      'Menurunkan tegangan baterai 12.8V menjadi 5.00V stabil agar ESP32 aman dari lonjakan & brownout. Dari terminal kanan OUT+ & OUT-, kabel merah-hitam masuk lewat celah tengah langsung ke pin VIN & GND ESP32.',
+    flowSummary: 'LM2596 OUT+ (5V) & OUT- → ESP32 VIN (Kolom 31) & GND (Kolom 30)',
+    accentColor: '#ef4444',
+    target: [1.3, 0.2, -1.6],
+    camPos: [1.3, 17.2, -1.2],
+    ringPos: [2.4, 0.32, -4.2],
+    frameSize: [2.92, 1.88],
+    flowPaths: [
+      [
+        [3.63, 0.285, -4.34],
+        [3.92, 0.12, -3.12],
+        [col(37), 0.46, -3.12],
+        [col(37), 0.46, Z_J],
+        [col(31), 0.46, Z_J],
+        [col(31), 0.22, Z_J],
+      ],
+      [
+        [3.63, 0.285, -4.02],
+        [4.08, 0.12, -2.92],
+        [col(38), 0.46, -2.92],
+        [col(38), 0.46, 2.22],
+        [col(30), 0.46, 2.22],
+        [col(30), 0.46, Z_J],
+        [col(30), 0.22, Z_J],
+      ],
+    ],
+    durationSec: 6.5,
+  },
+];

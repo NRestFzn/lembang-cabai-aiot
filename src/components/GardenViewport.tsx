@@ -1,8 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
-import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { PART_ORDER, PARTS_INFO } from '../data/parts';
-import { buildGardenScene, GardenSceneController, HotspotItem, PickResult } from '../three/buildGardenScene';
+import React from 'react';
+import { useGardenScene } from './garden/useGardenScene';
 import {
   AccentId,
   CameraPreset,
@@ -11,27 +8,6 @@ import {
   SimulationMetrics,
   WeatherMode,
 } from '../types/simulation';
-
-interface ProjectedLabel {
-  id: PartId;
-  code: string;
-  label: string;
-  x: number;
-  y: number;
-  visible: boolean;
-}
-
-interface ProjectedHotspot {
-  key: string;
-  kind: 'part' | 'leaf';
-  partId: PartId;
-  leaf?: SelectedLeafInfo;
-  ringColor: string;
-  title: string;
-  x: number;
-  y: number;
-  visible: boolean;
-}
 
 interface GardenViewportProps {
   metrics: SimulationMetrics;
@@ -50,25 +26,6 @@ interface GardenViewportProps {
   wobbleAmount: number;
 }
 
-const CAMERA_PRESETS: Record<CameraPreset, { pos: [number, number, number]; target: [number, number, number] }> = {
-  iso: { pos: [5.95, 4.15, 5.95], target: [-0.25, 0.72, -0.05] },
-  canopy: { pos: [3.1, 2.6, 3.1], target: [0.15, 0.92, -0.55] },
-  soil: { pos: [2.2, 1.35, 3.1], target: [-0.45, 0.28, -0.4] },
-  node: { pos: [0.15, 2.7, 2.65], target: [-2.45, 1.55, -0.95] },
-};
-
-const SHORT_LABEL: Record<PartId, string> = {
-  solar: 'SOLAR 10W',
-  enclosure: 'ESP32 BOX',
-  esp32cam: 'ESP32-CAM',
-  dht22: 'BME280 KANOPI',
-  soil_probe: 'SOIL PROBE',
-  solenoid: 'SOLENOID',
-  pump: 'POMPA',
-  chili_plant: 'CABAI',
-  terrace: 'TERASERING',
-};
-
 export const GardenViewport: React.FC<GardenViewportProps> = ({
   metrics,
   weather,
@@ -85,14 +42,7 @@ export const GardenViewport: React.FC<GardenViewportProps> = ({
   onSelectLeaf,
   wobbleAmount,
 }) => {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const controllerRef = useRef<GardenSceneController | null>(null);
-  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
-  const controlsRef = useRef<OrbitControls | null>(null);
-  const targetCamPosRef = useRef<THREE.Vector3 | null>(null);
-  const targetLookAtRef = useRef<THREE.Vector3 | null>(null);
-
-  const stateRef = useRef({
+  const { containerRef, labels, hotspots } = useGardenScene({
     metrics,
     weather,
     accent,
@@ -100,295 +50,13 @@ export const GardenViewport: React.FC<GardenViewportProps> = ({
     showFov,
     showLabels,
     showHighlights,
+    cameraPreset,
+    resetTrigger,
     selectedPart,
     selectedLeaf,
+    onSelectPart,
+    onSelectLeaf,
   });
-  stateRef.current = {
-    metrics,
-    weather,
-    accent,
-    exploded,
-    showFov,
-    showLabels,
-    showHighlights,
-    selectedPart,
-    selectedLeaf,
-  };
-
-  const onSelectRef = useRef(onSelectPart);
-  onSelectRef.current = onSelectPart;
-  const onSelectLeafRef = useRef(onSelectLeaf);
-  onSelectLeafRef.current = onSelectLeaf;
-
-  const [labels, setLabels] = useState<ProjectedLabel[]>([]);
-  const [hotspots, setHotspots] = useState<ProjectedHotspot[]>([]);
-
-  // Trigger smooth camera transition on preset change or reset
-  useEffect(() => {
-    const p = CAMERA_PRESETS[cameraPreset];
-    targetCamPosRef.current = new THREE.Vector3(...p.pos);
-    targetLookAtRef.current = new THREE.Vector3(...p.target);
-  }, [cameraPreset, resetTrigger]);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const width = container.clientWidth || 800;
-    const height = container.clientHeight || 520;
-
-    const renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      alpha: true,
-      powerPreference: 'high-performance',
-    });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setSize(width, height);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    container.appendChild(renderer.domElement);
-
-    const camera = new THREE.PerspectiveCamera(34, width / height, 0.03, 70);
-    camera.position.set(...CAMERA_PRESETS.iso.pos);
-    cameraRef.current = camera;
-
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(...CAMERA_PRESETS.iso.target);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.08;
-    controls.enablePan = true;
-    controls.zoomSpeed = 1.25;
-    controls.minDistance = 0.45;
-    controls.maxDistance = 15.0;
-    controls.maxPolarAngle = Math.PI / 2 - 0.02;
-    controls.minPolarAngle = 0.1;
-    controlsRef.current = controls;
-
-    // Cancel preset lerp when user grabs camera manually
-    const cancelPresetLerp = () => {
-      targetCamPosRef.current = null;
-      targetLookAtRef.current = null;
-    };
-    controls.addEventListener('start', cancelPresetLerp);
-
-    // WASD + Arrow + Q/E smooth movement
-    const keysDown = new Set<string>();
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLTextAreaElement) return;
-      if (e.target instanceof HTMLInputElement && e.target.type !== 'range') return;
-      const code = e.code;
-      if (
-        code === 'KeyW' ||
-        code === 'KeyA' ||
-        code === 'KeyS' ||
-        code === 'KeyD' ||
-        code === 'KeyQ' ||
-        code === 'KeyE' ||
-        code === 'ArrowUp' ||
-        code === 'ArrowDown' ||
-        code === 'ArrowLeft' ||
-        code === 'ArrowRight'
-      ) {
-        keysDown.add(code);
-        cancelPresetLerp();
-      }
-    };
-    const handleKeyUp = (e: KeyboardEvent) => {
-      keysDown.delete(e.code);
-    };
-    const handleWindowBlur = () => {
-      keysDown.clear();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    window.addEventListener('blur', handleWindowBlur);
-
-    const garden = buildGardenScene();
-    controllerRef.current = garden;
-
-    // Click picking (ignore drag gestures)
-    const raycaster = new THREE.Raycaster();
-    const pointer = new THREE.Vector2();
-    let downX = 0;
-    let downY = 0;
-
-    const handlePointerDown = (e: PointerEvent) => {
-      downX = e.clientX;
-      downY = e.clientY;
-    };
-
-    const handlePointerUp = (e: PointerEvent) => {
-      const dist = Math.hypot(e.clientX - downX, e.clientY - downY);
-      if (dist > 6) return;
-      const rect = renderer.domElement.getBoundingClientRect();
-      pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-      raycaster.setFromCamera(pointer, camera);
-      const hit: PickResult | null = garden.pickPart(raycaster);
-      if (hit) {
-        onSelectRef.current(hit.partId);
-        if (hit.leaf) {
-          onSelectLeafRef.current(hit.leaf);
-        } else {
-          onSelectLeafRef.current(null);
-        }
-      }
-    };
-
-    renderer.domElement.addEventListener('pointerdown', handlePointerDown);
-    renderer.domElement.addEventListener('pointerup', handlePointerUp);
-
-    // ResizeObserver for responsive container
-    const resizeObserver = new ResizeObserver(() => {
-      if (!container) return;
-      const w = container.clientWidth;
-      const h = container.clientHeight;
-      if (w <= 0 || h <= 0) return;
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-      renderer.setSize(w, h);
-    });
-    resizeObserver.observe(container);
-
-    let animId = 0;
-    let lastTime = performance.now();
-    let elapsed = 0;
-    let labelTick = 0.05;
-    const tempVec = new THREE.Vector3();
-    const forwardVec = new THREE.Vector3();
-    const rightVec = new THREE.Vector3();
-    const moveVec = new THREE.Vector3();
-
-    const animate = (now: number) => {
-      animId = requestAnimationFrame(animate);
-      const dt = Math.min(0.05, (now - lastTime) / 1000);
-      lastTime = now;
-      elapsed += dt;
-
-      if (targetCamPosRef.current && targetLookAtRef.current) {
-        camera.position.lerp(targetCamPosRef.current, Math.min(1, dt * 5));
-        controls.target.lerp(targetLookAtRef.current, Math.min(1, dt * 5));
-        if (camera.position.distanceTo(targetCamPosRef.current) < 0.03) {
-          targetCamPosRef.current = null;
-          targetLookAtRef.current = null;
-        }
-      } else if (keysDown.size > 0) {
-        camera.getWorldDirection(forwardVec);
-        forwardVec.y = 0;
-        if (forwardVec.lengthSq() > 0.0001) forwardVec.normalize();
-        rightVec.crossVectors(forwardVec, camera.up).normalize();
-
-        moveVec.set(0, 0, 0);
-        if (keysDown.has('KeyW') || keysDown.has('ArrowUp')) moveVec.add(forwardVec);
-        if (keysDown.has('KeyS') || keysDown.has('ArrowDown')) moveVec.sub(forwardVec);
-        if (keysDown.has('KeyD') || keysDown.has('ArrowRight')) moveVec.add(rightVec);
-        if (keysDown.has('KeyA') || keysDown.has('ArrowLeft')) moveVec.sub(rightVec);
-        if (keysDown.has('KeyE')) moveVec.y += 0.7;
-        if (keysDown.has('KeyQ')) moveVec.y -= 0.7;
-
-        if (moveVec.lengthSq() > 0) {
-          const distScale = THREE.MathUtils.clamp(camera.position.distanceTo(controls.target) * 0.65, 1.4, 4.5);
-          moveVec.normalize().multiplyScalar(distScale * dt);
-
-          const nextTargetX = THREE.MathUtils.clamp(controls.target.x + moveVec.x, -4.8, 4.8);
-          const nextTargetY = THREE.MathUtils.clamp(controls.target.y + moveVec.y, -0.25, 3.2);
-          const nextTargetZ = THREE.MathUtils.clamp(controls.target.z + moveVec.z, -4.0, 4.0);
-
-          const dx = nextTargetX - controls.target.x;
-          const dy = nextTargetY - controls.target.y;
-          const dz = nextTargetZ - controls.target.z;
-
-          controls.target.set(nextTargetX, nextTargetY, nextTargetZ);
-          camera.position.x += dx;
-          camera.position.y = Math.max(0.05, camera.position.y + dy);
-          camera.position.z += dz;
-        }
-      }
-
-      controls.update();
-
-      const s = stateRef.current;
-      garden.update(
-        dt,
-        elapsed,
-        s.metrics,
-        s.weather,
-        s.accent,
-        s.exploded,
-        s.showFov,
-        s.selectedPart,
-        s.selectedLeaf
-      );
-      renderer.render(garden.scene, camera);
-
-      // Update projected 2D labels & circular hotspots ~20fps to keep React light
-      labelTick += dt;
-      if ((s.showLabels || s.showHighlights) && labelTick >= 0.05) {
-        labelTick = 0;
-        const w = container.clientWidth;
-        const h = container.clientHeight;
-
-        if (s.showLabels) {
-          const nextLabels: ProjectedLabel[] = PART_ORDER.filter((id) => id !== 'terrace').map((id) => {
-            const info = PARTS_INFO[id];
-            tempVec.set(...info.anchorLocal);
-            tempVec.project(camera);
-            const visible = tempVec.z < 1 && tempVec.x > -0.95 && tempVec.x < 0.95 && tempVec.y > -0.95 && tempVec.y < 0.95;
-            return {
-              id,
-              code: info.code,
-              label: SHORT_LABEL[id],
-              x: (tempVec.x * 0.5 + 0.5) * w,
-              y: (-tempVec.y * 0.5 + 0.5) * h,
-              visible,
-            };
-          });
-          setLabels(nextLabels);
-        }
-
-        if (s.showHighlights) {
-          const rawHotspots: HotspotItem[] = garden.getHotspots();
-          const nextHotspots: ProjectedHotspot[] = rawHotspots.map((hs) => {
-            tempVec.set(...hs.worldPos);
-            tempVec.project(camera);
-            const visible = tempVec.z < 1 && tempVec.x > -0.95 && tempVec.x < 0.95 && tempVec.y > -0.95 && tempVec.y < 0.95;
-            return {
-              key: hs.key,
-              kind: hs.kind,
-              partId: hs.partId,
-              leaf: hs.leaf,
-              ringColor: hs.ringColor ?? '#fbf8f0',
-              title: hs.kind === 'leaf' && hs.leaf ? `Cek kondisi daun Pohon #${hs.leaf.plantIndex + 1}` : PARTS_INFO[hs.partId].name,
-              x: (tempVec.x * 0.5 + 0.5) * w,
-              y: (-tempVec.y * 0.5 + 0.5) * h,
-              visible,
-            };
-          });
-          setHotspots(nextHotspots);
-        }
-      }
-    };
-
-    animId = requestAnimationFrame(animate);
-
-    return () => {
-      cancelAnimationFrame(animId);
-      resizeObserver.disconnect();
-      controls.removeEventListener('start', cancelPresetLerp);
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-      window.removeEventListener('blur', handleWindowBlur);
-      renderer.domElement.removeEventListener('pointerdown', handlePointerDown);
-      renderer.domElement.removeEventListener('pointerup', handlePointerUp);
-      controls.dispose();
-      garden.dispose();
-      renderer.dispose();
-      if (renderer.domElement.parentNode === container) {
-        container.removeChild(renderer.domElement);
-      }
-    };
-  }, []);
 
   return (
     <div className="viewport-shell" ref={containerRef}>
@@ -425,7 +93,7 @@ export const GardenViewport: React.FC<GardenViewportProps> = ({
                   onSelectLeaf(hs.leaf ?? null);
                 }}
               >
-                <span className="hotspot-dot" style={{ backgroundColor: hs.ringColor }} />
+                <span className="h-2.5 w-2.5 rounded-full border-[1.5px] border-ink" style={{ backgroundColor: hs.ringColor }} />
               </button>
             );
           })}
@@ -444,7 +112,7 @@ export const GardenViewport: React.FC<GardenViewportProps> = ({
                   style={{ left: `${lb.x}px`, top: `${lb.y}px` }}
                   onClick={() => onSelectPart(lb.id)}
                 >
-                  <span className="pin-code">{lb.code}</span>
+                  <span className="text-[10px] opacity-65">{lb.code}</span>
                   <span>{lb.label}</span>
                 </button>
               )
