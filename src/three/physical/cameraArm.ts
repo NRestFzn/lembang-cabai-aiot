@@ -4,7 +4,7 @@ import { PhysicalContext } from './context';
 import { PhysicalMaterials } from './lighting';
 import { RegisterMove } from './modules';
 
-/** ESP32-CAM weatherproof visor arm (original section 4). */
+/** ArduCam Camera Module 3 (IMX708 12MP) weatherproof visor arm (original section 4). */
 export function buildCameraArm(
   ctx: PhysicalContext,
   materials: PhysicalMaterials,
@@ -16,7 +16,7 @@ export function buildCameraArm(
   const { scene, factory, trackGeo } = ctx;
   const { aluMat, darkMetalMat, smokedWindowMat } = materials;
   // =========================================================================
-  // 4. ESP32-CAM WEATHERPROOF VISOR ARM (CLEAN SIDE-FRONT CLEAR OF BOX & SOLAR)
+  // 4. ARDUCAM MODULE 3 WEATHERPROOF VISOR ARM (CLEAN SIDE-FRONT CLEAR OF BOX & SOLAR)
   // =========================================================================
   const camArmGroup = new THREE.Group();
   camArmGroup.position.set(mastX + 2.15, 4.18, mastZ + 0.15);
@@ -47,7 +47,9 @@ export function buildCameraArm(
   camTiltHead.rotation.set(0.32, 0, 0);
   camArmGroup.add(camTiltHead);
 
-  // Real ESP32-CAM OV2640 oriented facing outward (+Z)
+  // Real ArduCam Camera Module 3 (IMX708 12MP) oriented facing outward (+Z).
+  // The module is the smaller 25x24mm board (was ESP32-CAM); the 0.42 scale
+  // and the visor hood are unchanged — the board still fits inside the hood.
   camGroup.position.set(0, 0, 0);
   camGroup.rotation.set(Math.PI / 2, 0, 0);
   camGroup.scale.setScalar(0.42);

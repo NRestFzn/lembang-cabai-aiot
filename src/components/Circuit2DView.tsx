@@ -9,7 +9,7 @@ interface Circuit2DViewProps {
 const CATEGORY_SECTIONS: { key: CircuitModuleCategory; title: string; badge: string }[] = [
   { key: 'Daya', title: 'Sumber Daya & Regulasi', badge: 'Solar · LiFePO4 · Buck' },
   { key: 'Sensor', title: 'Sensor Kanopi & Tanah', badge: 'I2C · ADC · 1-Wire' },
-  { key: 'Kontrol', title: 'Mikrokontroler, Kamera & Log', badge: 'ESP32 · OV2640 · SPI' },
+  { key: 'Kontrol', title: 'Mikrokontroler, Kamera & Log', badge: 'ESP32 · IMX708 · SPI' },
   { key: 'Aktuator', title: 'Driver, Relay & Aktuator', badge: 'GPIO → 12V Load' },
 ];
 

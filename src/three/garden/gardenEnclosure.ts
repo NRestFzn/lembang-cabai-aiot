@@ -88,7 +88,7 @@ const backPlate = factory.createOutlinedMesh(
 backPlate.position.z = -cavD / 2;
 boxCore.add(backPlate);
 
-// Left wall solid; Right wall split for hollow side gland (ESP32-CAM boom cable)
+// Left wall solid; Right wall split for hollow side gland (ArduCam CSI flex cable)
 const boxLeftWall = factory.createOutlinedMesh(
   trackGeo(new THREE.BoxGeometry(wallT, boxH, cavD)),
   mats.boxBodyMat,

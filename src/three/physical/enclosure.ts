@@ -82,7 +82,7 @@ export function buildEnclosure(
     return grp;
   };
 
-  // Left wall solid; Right wall split around hollow side gland (y = +0.62) for ESP32-CAM cable!
+  // Left wall solid; Right wall split around hollow side gland (y = +0.62) for ArduCam CSI flex / power cable!
   const leftWall = factory.createOutlinedMesh(
     trackGeo(new THREE.BoxGeometry(wallT, boxH, cavD)),
     ip65BodyMat,

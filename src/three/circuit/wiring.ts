@@ -433,7 +433,11 @@ export function buildCircuitWiring(
     { bbStart: true, bbEnd: true }
   );
 
-  // --- C. On-Board Breadboard Jumpers (ESP32, BME280, ESP32-CAM, MicroSD) ---
+  // --- C. On-Board Breadboard Jumpers (ESP32, BME280, ArduCam power, MicroSD) ---
+  // NOTE (ArduCam swap): the camera is now an ArduCam Camera Module 3 (IMX708)
+  // on MIPI CSI-2 — it is NOT an ESP32-CAM on UART2. Only its 5V/GND power
+  // jumpers remain on the breadboard; the former U0R/U0T jumpers (c49->GPIO17,
+  // c50->GPIO16) were removed, and GPIO16/17 are now spare.
   // ESP32 GND Top (c30) -> Top -GND (common GND link at c2 also bridges Top -GND <-> Bot -GND cleanly without clipping c30 Z_J!)
   addBBJumper(30, Z_B, 30, Z_TOP_GND, '#1f2937', 0.35);
   // ESP32 VIN bus (c31 Z_I) -> via open col 36 (y = 0.44 cleanly over SPI/UART) -> Top +5V Rail (c36) to feed CAM/SD/Relay
@@ -479,7 +483,8 @@ export function buildCircuitWiring(
   addBBJumper(9, Z_B, 18, Z_B, '#3b82f6', 0.34);
   addBBJumper(10, Z_A, 21, Z_A, '#06b6d4', 0.34);
 
-  // ESP32-CAM (c44..c51): 5V (c44 Bot) -> via open gap c42 (outside CAM PCB!) -> Top +5V Rail (c42)
+  // ArduCam Camera Module 3 (c44..c45 power only): 5V (c44 Bot) -> via open gap c42 (outside CAM PCB!) -> Top +5V Rail (c42)
+  // Image data leaves over the MIPI CSI-2 flex to the host, not over breadboard jumpers.
   addAssembledWire(
     [
       [bbCol(44), bbTop, Z_I],
@@ -491,11 +496,12 @@ export function buildCircuitWiring(
     '#dc2626',
     { bbStart: true, bbEnd: true }
   );
-  // ESP32-CAM GND (c45 Bot) -> Bot -GND Rail (c45)
+  // ArduCam GND (c45 Bot) -> Bot -GND Rail (c45)
   addBBJumper(45, Z_I, 45, Z_BOT_GND, '#1f2937', 0.35);
-  // ESP32-CAM U0R (c49) -> ESP32 GPIO17 (c25) along Z_A; U0T (c50) -> ESP32 GPIO16 (c26) along Z_B
-  addBBJumper(49, Z_A, 25, Z_A, '#06b6d4', 0.35);
-  addBBJumper(50, Z_B, 26, Z_B, '#a855f7', 0.35);
+  // REMOVED (ArduCam swap): former ESP32-CAM UART2 jumpers U0R (c49) -> ESP32
+  // GPIO17 (c25) and U0T (c50) -> ESP32 GPIO16 (c26). The ArduCam IMX708 talks
+  // MIPI CSI-2 over its flex cable, so no UART2 camera link exists anymore;
+  // GPIO16/17 are left spare and no jumper is drawn here.
 
   // MicroSD (c54..c59): GND (c54) -> Top -GND, VCC (c55) -> Top +5V
   addBBJumper(54, Z_B, 54, Z_TOP_GND, '#1f2937', 0.35);

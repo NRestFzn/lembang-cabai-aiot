@@ -101,7 +101,7 @@ export const ESP32_PARTS: Record<EspPartKey, EspPartDetail> = {
     designator: 'H2',
     name: 'Header Pin Kanan (SD, CAM & Relay)',
     spec: '15-Pin 2.54mm Gold Header',
-    role: 'Jalur keluar menuju MicroSD SPI (GPIO5/18/23/19), ESP32-CAM UART2 (GPIO16/17 + GPIO25), dan kontrol Relay 2-Channel (GPIO26/27).',
+    role: 'Jalur keluar menuju MicroSD SPI (GPIO5/18/23/19) dan kontrol Relay 2-Channel (GPIO26/27). GPIO16/17 (UART2) kini tidak lagi dipakai sebagai jalur kamera — kamera ArduCam terhubung via MIPI CSI-2 flex ke host-nya.',
     pins: '3V3 · GND · 15 · 2 · 4 · 16 · 17 · 5 · 18 · 19 · 21 · RX0 · TX0 · 22 · 23',
   },
   RC: {
@@ -155,10 +155,10 @@ export const ESP32_PARTS: Record<EspPartKey, EspPartDetail> = {
   },
   ESP32CAM: {
     designator: 'CAM1',
-    name: 'ESP32-CAM (OV2640 2MP)',
-    spec: 'AI-Thinker ESP32-S + PSRAM 4MB · Lensa OV2640 + Flash LED',
-    role: 'Confirmation Layer visual: dibangunkan dari deep-sleep saat skor risiko patek tinggi untuk menangkap citra bercak/menguning dini pada daun.',
-    pins: 'Kiri: 5V, GND, IO12..IO4 · Kanan: 3V3, IO16, IO0, GND, VCC, U0R, U0T, GND',
+    name: 'ArduCam Camera Module 3 (IMX708 12MP)',
+    spec: 'Sony IMX708 12MP 4608×2592 · MIPI CSI-2 · Fixed-Focus ~66° HFOV · PCB 25×24mm',
+    role: 'Confirmation Layer visual: kamera 12MP yang memotret bercak/menguning dini pada daun saat skor risiko patek tinggi, terhubung ke host via kabel flex MIPI CSI-2 (bukan UART).',
+    pins: 'CSI flex 15-pin (MIPI CSI-2) · 5V · GND',
   },
   SOLAR: {
     designator: 'PV1',

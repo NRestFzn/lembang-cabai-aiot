@@ -13,7 +13,7 @@ export interface GardenSensorParts {
 }
 
 /**
- * Section 4b: solar panel + ESP32-CAM + BME280 shield + soil probes +
+ * Section 4b: solar panel + ArduCam Module 3 + BME280 shield + soil probes +
  * field actuator power cables (added to the enclosure group).
  */
 export function buildGardenSensors(ctx: GardenContext, enclosureGroup: THREE.Group): GardenSensorParts {
@@ -56,7 +56,7 @@ solarGroup.add(
 );
 tagPart(solarGroup, 'solar');
 
-// --- Real ESP32-CAM OV2640 (`esp32cam`) ---
+// --- Real ArduCam Camera Module 3 (IMX708 12MP) (`esp32cam`) ---
 const camGroup = new THREE.Group();
 camGroup.position.set(POLE_X + 0.34, 2.12, POLE_Z);
 scene.add(camGroup);
@@ -89,7 +89,9 @@ const camHoodVisor = factory.createOutlinedMesh(
 camHoodVisor.position.set(0.03, 0.115, 0);
 camHead.add(camHoodVisor);
 
-// Real ESP32-CAM OV2640 module mounted facing outward (+X) along FOV axis
+// Real ArduCam Camera Module 3 (IMX708 12MP) mounted facing outward (+X) along FOV axis.
+// The board is the smaller 25x24mm module (was ESP32-CAM); the 0.09 mount scale
+// is unchanged, so it sits proportionally smaller on the same arm/hood.
 const camRealMount = new THREE.Group();
 camRealMount.position.set(0.025, 0, 0);
 camRealMount.rotation.y = Math.PI / 2;
@@ -103,8 +105,10 @@ const camLed = new THREE.Mesh(trackGeo(new THREE.SphereGeometry(0.015, 8, 8)), m
 camLed.position.set(0.08, 0.095, 0.075);
 camHead.add(camLed);
 
-// Translucent Camera FOV Frustum aimed at upper chili canopy
-const fovGeo = trackGeo(new THREE.ConeGeometry(0.92, 2.2, 4, 1, true));
+// Translucent Camera FOV Frustum aimed at upper chili canopy.
+// ArduCam IMX708 fixed-focus ~66 deg HFOV: cone radius = 2.2 * tan(33 deg) = 1.43
+// over the 2.2 length, so the full apex angle is ~66 deg (was 0.92 / ~45 deg).
+const fovGeo = trackGeo(new THREE.ConeGeometry(1.43, 2.2, 4, 1, true));
 const fovMat = new THREE.MeshBasicMaterial({
   color: new THREE.Color('#ef6a4c'),
   transparent: true,

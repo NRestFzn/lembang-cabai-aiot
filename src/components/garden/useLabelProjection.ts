@@ -27,7 +27,7 @@ export interface ProjectedHotspot {
 export const SHORT_LABEL: Record<PartId, string> = {
   solar: 'SOLAR 10W',
   enclosure: 'ESP32 BOX',
-  esp32cam: 'ESP32-CAM',
+  esp32cam: 'ArduCam Module 3',
   dht22: 'BME280 KANOPI',
   soil_probe: 'SOIL PROBE',
   solenoid: 'SOLENOID',
