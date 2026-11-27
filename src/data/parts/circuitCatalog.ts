@@ -109,10 +109,10 @@ export const CIRCUIT_CATALOG: CircuitCatalogItem[] = [
   {
     part: 'ESP32CAM',
     code: 'CAM1',
-    label: 'ESP32-CAM OV2640',
+    label: 'ArduCam Camera Module 3 IMX708',
     category: 'Kontrol',
-    voltage: '5V / UART',
-    pins: ['5V', 'GND', 'U0R', 'U0T', 'IO12..IO16'],
+    voltage: '5V / CSI-2',
+    pins: ['5V', 'GND', 'CSI flex', 'IMX708 12MP'],
     focusOffset: [1.3, 3.2, 3.0],
     targetPos: [3.15, 0.35, -1.75],
   },

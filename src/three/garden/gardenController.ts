@@ -403,7 +403,7 @@ const update = (
   });
   mats.boxLidMat.opacity = 1 - explodeLerp * 0.45;
 
-  // 8. ESP32-CAM FOV Cone
+  // 8. ArduCam FOV Cone (~66 deg HFOV, IMX708 fixed-focus)
   fovCone.visible = showFov || selectedPart === 'esp32cam';
   fovEdges.visible = fovCone.visible;
 

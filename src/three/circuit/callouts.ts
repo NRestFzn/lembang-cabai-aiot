@@ -23,7 +23,7 @@ export function buildCalloutAnchors(tops: ModuleTops): CalloutAnchor[] {
     { id: 'c-uart', text: 'USB-C', part: 'J1', anchor: new THREE.Vector3(-2.35, pcbTop + 0.22, 1.9) },
     { id: 'c-lm', text: 'LM2596 REGULATOR', part: 'LM2596', anchor: new THREE.Vector3(0.55, lmTop + 0.5, -1.35) },
     { id: 'c-sd', text: 'MICROSD LOGGER SPI', part: 'MICROSD', anchor: new THREE.Vector3(0.55, sdTop + 0.4, 2.45) },
-    { id: 'c-cam', text: 'ESP32-CAM OV2640', part: 'ESP32CAM', anchor: new THREE.Vector3(3.15, camTop + 0.55, -1.75) },
+    { id: 'c-cam', text: 'ArduCam Module 3 IMX708', part: 'ESP32CAM', anchor: new THREE.Vector3(3.15, camTop + 0.55, -1.75) },
     { id: 'c-jmp', text: 'KABEL JUMPER DUPONT', part: 'JUMPER', anchor: new THREE.Vector3(3.15, 0.35, 2.95) },
     { id: 'c-rly', text: 'RELAY 2-CHANNEL 5V', part: 'RELAY', anchor: new THREE.Vector3(5.85, rlyTop + 0.65, -1.45) },
     { id: 'c-pmp', text: 'POMPA 12V DIAPHRAGM', part: 'PUMP', anchor: new THREE.Vector3(5.85, 0.95, 0.55) },

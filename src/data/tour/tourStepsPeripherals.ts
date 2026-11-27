@@ -8,23 +8,22 @@ export const TOUR_STEPS_PERIPHERALS: CircuitTourStep[] = [
     id: 'cam',
     part: 'ESP32CAM',
     stage: '09 / 12 · Konfirmasi Visual Daun',
-    title: 'ESP32-CAM (OV2640 2MP)',
+    title: 'ArduCam Camera Module 3 (IMX708 12MP)',
     description:
-      'Mengambil daya 5V dari rail atas (kolom 42). Saat skor patek tinggi, ESP32 membangunkan ESP32-CAM lewat jalur serial UART2 (U0R/U0T) untuk memotret gejala bercak patek secara visual.',
-    flowSummary: 'ESP32 GPIO16/17 (UART2) ↔ ESP32-CAM (Kolom 49/50)',
+      'Mengambil daya 5V dari rail atas (kolom 42). Saat skor patek tinggi, ArduCam Camera Module 3 (Sony IMX708 12MP, 4608×2592) memotret gejala bercak patek secara visual lewat kabel flex MIPI CSI-2 ke host-nya — kamera ini tidak dibangunkan lewat UART2.',
+    flowSummary: 'CSI flex ↔ host (MIPI CSI-2) · 5V dari rail atas (Kolom 42)',
     accentColor: '#a855f7',
     target: [2.2, 0.2, 0.15],
     camPos: [2.2, 10.0, 0.5],
     ringPos: [2.86, 0.52, 0.0],
     frameSize: [2.62, 1.98],
     flowPaths: [
+      // Power only: 5V rail (col 42) feeds the ArduCam; image data travels
+      // over the MIPI CSI-2 flex to the host, NOT over UART2 (GPIO16/17).
+      // The former U0R/U0T jumper run (cols 49/50) is removed — see wiring.ts.
       [
-        [col(25), 0.35, Z_A],
-        [col(49), 0.35, Z_A],
-      ],
-      [
-        [col(26), 0.35, Z_B],
-        [col(50), 0.35, Z_B],
+        [col(42), 0.35, Z_A],
+        [col(44), 0.35, Z_A],
       ],
     ],
     durationSec: 5.5,

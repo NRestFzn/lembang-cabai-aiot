@@ -110,7 +110,7 @@ export function buildProbesAndCables(
     '#1f2937',
     'SOLAR'
   );
-  // ESP32-CAM -> along aluminum boom -> through hollow Right Side Gland -> straight into ESP32 UART/5V inside box
+  // ArduCam Module 3 -> along aluminum boom -> through hollow Right Side Gland -> 5V/GND power into box; image data over the MIPI CSI-2 flex (no UART link)
   addExternalCable(
     [
       [mastX + 2.15, 4.05, mastZ + 0.72],

@@ -28,12 +28,12 @@ export const PARTS_INFO: Record<PartId, PartInfo> = {
   esp32cam: {
     id: 'esp32cam',
     code: 'CAM1',
-    name: 'ESP32-CAM (Confirmation Layer)',
+    name: 'ArduCam Camera Module 3 (IMX708 12MP)',
     role: 'Memotret daun cabai saat skor risiko tinggi untuk konfirmasi dini gejala visual (bercak, menguning, awal patek) sebelum menyebar antar-petak.',
     placement: 'Lengan lurus menghadap 2 pohon kanopi cabai di teras atas.',
     whyHere:
       'Menjadi sensor fusion confirmation layer saat risiko mikroiklim tinggi untuk konfirmasi bercak/menguning dini—bukan pengganti logika VPD & LWD.',
-    spec: 'AI-Thinker OV2640 2MP + Flash LED + Low-Power Deep Sleep',
+    spec: 'Sony IMX708 12MP 4608×2592 · MIPI CSI-2 · Fixed-Focus ~66° HFOV · PCB 25×24mm',
     anchorLocal: [-2.43, 2.12, -1.12],
   },
   dht22: {

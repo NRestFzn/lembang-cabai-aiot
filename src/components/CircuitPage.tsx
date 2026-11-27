@@ -5,6 +5,7 @@ import {
   CircuitInfoModal,
   PlayTourControls,
 } from './circuit/CircuitOverlays';
+import { CircuitComponentsList } from './circuit/CircuitComponentsList';
 import { useCircuitScene } from './circuit/useCircuitScene';
 import { SimulationMetrics } from '../types/simulation';
 
@@ -45,6 +46,14 @@ export const CircuitPage: React.FC<CircuitPageProps> = ({ metrics, onAnimationCh
         <CircuitInfoModal
           clickedStep={scene.clickedStep}
           onClose={() => scene.setClickedStep(null)}
+        />
+      )}
+
+      {/* Top-Right Components List (same spot, when NOT in Play Mode & nothing is clicked) */}
+      {!isAnimating && !scene.clickedStep && (
+        <CircuitComponentsList
+          clickedStep={scene.clickedStep}
+          onSelectStep={scene.setClickedStep}
         />
       )}
 

@@ -58,7 +58,7 @@ export const LeafModal: React.FC<LeafModalProps> = ({ leaf, leafMeta, metrics, o
           </strong>
         </div>
         <div className="mini-cell">
-          <span>ESP32-CAM</span>
+          <span>ArduCam Module 3</span>
           <strong>
             {leaf.plantIndex >= 2
               ? 'Di Luar FOV CAM'

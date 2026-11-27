@@ -45,9 +45,9 @@ export const LEAF_CONDITION_META: Record<LeafCondition, LeafConditionMeta> = {
     leafYoungHex: '#c2c74b',
     summary: 'Terlihat klorosis/menguning ringan pada helaian daun kanopi.',
     cause:
-      'Stres kelembaban mikroiklim berkepanjangan atau fase awal infeksi yang mulai terbaca sebagai anomali warna oleh kamera ESP32-CAM.',
+      'Stres kelembaban mikroiklim berkepanjangan atau fase awal infeksi yang mulai terbaca sebagai anomali warna oleh kamera ArduCam Camera Module 3.',
     aiotAction:
-      'ESP32-CAM mengambil konfirmasi visual dan menaikkan bobot risiko patek 12–36 jam pada petak ini.',
+      'ArduCam Camera Module 3 mengambil konfirmasi visual dan menaikkan bobot risiko patek 12–36 jam pada petak ini.',
   },
   patek_early: {
     condition: 'patek_early',
