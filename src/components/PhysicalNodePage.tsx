@@ -176,7 +176,7 @@ export const PhysicalNodePage: React.FC<PhysicalNodePageProps> = ({ metrics }) =
       <div
         ref={containerRef}
         className="viewport-shell"
-        aria-label="Unit Fisik Alat AIoT (Bisa Dibongkar)"
+        aria-label="Unit Fisik Purwarupa Alat AIoT (Bisa Dibongkar)"
       />
 
       {/* Top-Right Detail Modal when clicking exterior or internal module */}
@@ -184,7 +184,7 @@ export const PhysicalNodePage: React.FC<PhysicalNodePageProps> = ({ metrics }) =
         <aside className="info-modal" role="dialog" aria-label="Informasi Komponen Alat Asli">
           <div className="modal-head">
             <div>
-              <div className="modal-eyebrow">Bagian {partInfo.designator} · Alat Asli</div>
+              <div className="modal-eyebrow">Bagian {partInfo.designator} · Purwarupa Alat</div>
               <h2 className="modal-title">{partInfo.name}</h2>
             </div>
             <button

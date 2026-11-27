@@ -17,7 +17,7 @@ export type PartId =
 
 export type AiotDecision = 'IDLE' | 'SIRAM' | 'TUNDA' | 'KURANGI';
 
-export type LeafCondition = 'healthy' | 'wet_risk' | 'yellowing' | 'patek_early';
+export type LeafCondition = 'healthy' | 'wet_risk' | 'yellowing' | 'patek_early' | 'patek_infected';
 
 export interface SelectedLeafInfo {
   plantIndex: number;
@@ -44,6 +44,8 @@ export interface SimulationMetrics {
   ambientTempC: number;
   relativeHumidity: number;
   vpdKpa: number;
+  dewPointC: number;
+  dewPointDepressionC: number;
   soilMoisturePct: number; // 0..100
   leafWetnessPct: number; // 0..100
   leafWetnessHours: number; // continuous wet hours
@@ -54,6 +56,8 @@ export interface SimulationMetrics {
   isWatering: boolean;
   wateringRemainingSec: number;
   aiotMode: boolean;
+  autoTargetSoilPct: number;
+  autoGuardNight: boolean;
   lastDecision: AiotDecision;
   decisionReason: string;
   offlineBufferedCount: number;
@@ -68,7 +72,9 @@ export interface NudgeBanner {
 
 export interface SerialLogEntry {
   id: number;
+  day: number;
   simTime: string;
   tag: 'SENS' | 'RISK' | 'VALVE' | 'NUDGE' | 'CAM' | 'SYNC';
+  title: string;
   message: string;
 }

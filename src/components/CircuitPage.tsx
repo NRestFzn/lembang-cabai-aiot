@@ -21,6 +21,17 @@ const easeInOutCubic = (t: number) =>
 const OVERVIEW_STEP = CIRCUIT_TOUR_STEPS[0];
 const FLY_DURATION_SEC = 1.35;
 
+interface CircuitHotspot {
+  id: string;
+  title: string;
+  color: string;
+  x: number;
+  y: number;
+  visible: boolean;
+}
+
+const TOUR_HOTSPOT_STEPS = CIRCUIT_TOUR_STEPS.filter((s) => s.part !== 'OVERVIEW');
+
 export const CircuitPage: React.FC<CircuitPageProps> = ({ metrics, onAnimationChange }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const controllerRef = useRef<Esp3DSceneController | null>(null);
@@ -28,6 +39,8 @@ export const CircuitPage: React.FC<CircuitPageProps> = ({ metrics, onAnimationCh
   const controlsRef = useRef<OrbitControls | null>(null);
 
   const [isAnimating, setIsAnimating] = useState(false);
+  const [showHighlights, setShowHighlights] = useState(true);
+  const [hotspots, setHotspots] = useState<CircuitHotspot[]>([]);
   const [tourIndex, setTourIndex] = useState(0);
   const [tourProgress, setTourProgress] = useState(0);
   const [clickedStep, setClickedStep] = useState<CircuitTourStep | null>(null);
@@ -46,6 +59,7 @@ export const CircuitPage: React.FC<CircuitPageProps> = ({ metrics, onAnimationCh
   const stateRef = useRef({
     metrics,
     isAnimating,
+    showHighlights,
     tourIndex,
     activeStep,
     onAnimationChange,
@@ -53,6 +67,7 @@ export const CircuitPage: React.FC<CircuitPageProps> = ({ metrics, onAnimationCh
   stateRef.current = {
     metrics,
     isAnimating,
+    showHighlights,
     tourIndex,
     activeStep,
     onAnimationChange,
@@ -213,6 +228,8 @@ export const CircuitPage: React.FC<CircuitPageProps> = ({ metrics, onAnimationCh
     let lastTime = performance.now();
     let elapsed = 0;
     let uiProgressTick = 0;
+    let hotspotTick = 0.05;
+    const tempVec = new THREE.Vector3();
 
     const animate = (now: number) => {
       animId = requestAnimationFrame(animate);
@@ -278,6 +295,33 @@ export const CircuitPage: React.FC<CircuitPageProps> = ({ metrics, onAnimationCh
 
       circuitScene.update(dt, elapsed, s.metrics, false, null, s.activeStep);
       renderer.render(circuitScene.scene, camera);
+
+      // Project interactive circular hotspots ~20fps when NOT animating
+      hotspotTick += dt;
+      if (!s.isAnimating && s.showHighlights && hotspotTick >= 0.05) {
+        hotspotTick = 0;
+        const w = container.clientWidth;
+        const h = container.clientHeight;
+        const nextHotspots: CircuitHotspot[] = TOUR_HOTSPOT_STEPS.map((step) => {
+          tempVec.set(...step.ringPos);
+          tempVec.project(camera);
+          const visible =
+            tempVec.z < 1 &&
+            tempVec.x > -0.96 &&
+            tempVec.x < 0.96 &&
+            tempVec.y > -0.96 &&
+            tempVec.y < 0.96;
+          return {
+            id: step.id,
+            title: step.title,
+            color: step.accentColor,
+            x: (tempVec.x * 0.5 + 0.5) * w,
+            y: (-tempVec.y * 0.5 + 0.5) * h,
+            visible,
+          };
+        });
+        setHotspots(nextHotspots);
+      }
     };
 
     animId = requestAnimationFrame(animate);
@@ -328,6 +372,32 @@ export const CircuitPage: React.FC<CircuitPageProps> = ({ metrics, onAnimationCh
         className="viewport-shell"
         aria-label="Rangkaian 2D/3D Node AIoT"
       />
+
+      {/* Interactive Hotspot Rings (same style as Diorama 3D, when NOT animating) */}
+      {!isAnimating && showHighlights && (
+        <div className="hotspots-layer">
+          {hotspots.map((hs) => {
+            if (!hs.visible) return null;
+            const isSelected = clickedStep?.id === hs.id;
+            return (
+              <button
+                key={hs.id}
+                type="button"
+                title={hs.title}
+                aria-label={hs.title}
+                className={`hotspot-ring is-part ${isSelected ? 'is-selected' : ''}`}
+                style={{ left: `${hs.x}px`, top: `${hs.y}px` }}
+                onClick={() => {
+                  const matched = TOUR_HOTSPOT_STEPS.find((st) => st.id === hs.id) ?? null;
+                  setClickedStep((prev) => (prev?.id === hs.id ? null : matched));
+                }}
+              >
+                <span className="hotspot-dot" style={{ backgroundColor: hs.color }} />
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Bottom Center Borderless Caption (ONLY during Cinematic Play Mode) */}
       {isAnimating && activeStep && (
@@ -411,7 +481,7 @@ export const CircuitPage: React.FC<CircuitPageProps> = ({ metrics, onAnimationCh
         </aside>
       )}
 
-      {/* Play Button (only shown when NOT animating) */}
+      {/* Play & Highlight Controls (only shown when NOT animating) */}
       {!isAnimating && (
         <div className="play-tour-wrap">
           <button type="button" className="play-tour-btn" onClick={handlePlayAnimation}>
@@ -419,6 +489,13 @@ export const CircuitPage: React.FC<CircuitPageProps> = ({ metrics, onAnimationCh
               ▶
             </span>
             <span>Play Animasi</span>
+          </button>
+          <button
+            type="button"
+            className={`dock-btn ${showHighlights ? 'is-active' : ''}`}
+            onClick={() => setShowHighlights((v) => !v)}
+          >
+            Highlight
           </button>
         </div>
       )}

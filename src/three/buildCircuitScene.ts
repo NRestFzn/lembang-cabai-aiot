@@ -235,8 +235,6 @@ export function buildCircuitScene(): Esp3DSceneController {
     modules: {
       espGroup,
       lmGroup,
-      trGroup,
-      ledBoardGroup,
       bmeGroup,
       soilGroup,
       dsGroup,
@@ -257,8 +255,6 @@ export function buildCircuitScene(): Esp3DSceneController {
   espGroup.position.set(bbCol(24), 0.14, 0);
   espGroup.rotation.y = Math.PI / 2;
   lmGroup.position.set(2.4, 0, -4.2);
-  trGroup.position.set(1.8, 0, 4.2);
-  ledBoardGroup.position.set(5.8, 0, 4.3);
   bmeGroup.position.set(-5.61, 0.14, -0.14);
   bmeGroup.rotation.y = Math.PI / 2;
   soilGroup.position.set(-6.2, 0, 4.0);
@@ -273,12 +269,10 @@ export function buildCircuitScene(): Esp3DSceneController {
   solarGroup.position.set(-10.0, 0, -4.2);
   mpptGroup.position.set(-6.2, 0, -4.2);
   batGroup.position.set(-1.8, 0, -4.2);
-  scene.add(espGroup, lmGroup, trGroup, ledBoardGroup, bmeGroup, soilGroup, dsGroup, sdGroup, camGroup, relayGroup, pumpGroup, solGroup, solarGroup, mpptGroup, batGroup);
+  scene.add(espGroup, lmGroup, bmeGroup, soilGroup, dsGroup, sdGroup, camGroup, relayGroup, pumpGroup, solGroup, solarGroup, mpptGroup, batGroup);
 
   const pcbTop = 0.365;
   const lmTop = 0.145;
-  const trTop = 0.145;
-  const lbTop = 0.145;
   const bmeTop = 0.135;
   const soilTop = 0.13;
   const dsTop = 0.135;
@@ -914,33 +908,6 @@ export function buildCircuitScene(): Esp3DSceneController {
     { capStart: true, bbEnd: true }
   );
 
-  // ESP32 GPIO2 (c28, Z_B) -> z = -1.20 (y = 0.48) -> wide-spaced gap c41 -> Transistor (1.8, 4.2)
-  addAssembledWire(
-    [
-      [bbCol(28), bbTop, Z_B],
-      [bbCol(28), 0.48, Z_B],
-      [bbCol(28), 0.48, -1.2],
-      [bbCol(41), 0.48, -1.2],
-      [bbCol(41), 0.48, 2.5],
-      [bbCol(41), 0.1, 2.5],
-      [bbCol(41), 0.1, 5.12],
-      [1.8, 0.1, 5.12],
-      [1.8, 0.32, 4.78],
-    ],
-    '#22c55e',
-    { bbStart: true, capEnd: true }
-  );
-  addAssembledWire(
-    [
-      [1.94, 0.32, 4.78],
-      [1.94, 0.1, 5.32],
-      [5.8, 0.1, 5.32],
-      [5.8, 0.2, 5.42],
-    ],
-    '#22c55e',
-    { capStart: true }
-  );
-
   // --- E. Relay (7.4, -4.2) -> Breadboard +5V/-GND Rails & ESP32 IN1/IN2 + Pump/Solenoid ---
   // Relay VCC (6.48, -4.05) -> Top +5V Rail (col 61); GND (6.48, -4.71) -> Top -GND Rail (col 62)
   addAssembledWire(
@@ -1073,11 +1040,8 @@ export function buildCircuitScene(): Esp3DSceneController {
     { id: 'c-wifi', text: 'ESP32-WROOM-32', part: 'U1', anchor: new THREE.Vector3(-2.35, pcbTop + 0.32, -0.98) },
     { id: 'c-uart', text: 'USB-C', part: 'J1', anchor: new THREE.Vector3(-2.35, pcbTop + 0.22, 1.9) },
     { id: 'c-lm', text: 'LM2596 REGULATOR', part: 'LM2596', anchor: new THREE.Vector3(0.55, lmTop + 0.5, -1.35) },
-    { id: 'c-tr', text: 'TRANSISTOR + FLYBACK', part: 'TRANSISTOR', anchor: new THREE.Vector3(0.55, trTop + 0.45, 0.7) },
     { id: 'c-sd', text: 'MICROSD LOGGER SPI', part: 'MICROSD', anchor: new THREE.Vector3(0.55, sdTop + 0.4, 2.45) },
     { id: 'c-cam', text: 'ESP32-CAM OV2640', part: 'ESP32CAM', anchor: new THREE.Vector3(3.15, camTop + 0.55, -1.75) },
-    { id: 'c-res', text: 'LED + RESISTOR', part: 'RESISTOR', anchor: new THREE.Vector3(3.15, lbTop + 0.36, 0.85) },
-    { id: 'c-led', text: 'STATUS LED D1', part: 'LED', anchor: new THREE.Vector3(3.15, lbTop + 0.56, 0.25) },
     { id: 'c-jmp', text: 'KABEL JUMPER DUPONT', part: 'JUMPER', anchor: new THREE.Vector3(3.15, 0.35, 2.95) },
     { id: 'c-rly', text: 'RELAY 2-CHANNEL 5V', part: 'RELAY', anchor: new THREE.Vector3(5.85, rlyTop + 0.65, -1.45) },
     { id: 'c-pmp', text: 'POMPA 12V DIAPHRAGM', part: 'PUMP', anchor: new THREE.Vector3(5.85, 0.95, 0.55) },

@@ -107,7 +107,6 @@ export function buildPhysicalNodeScene(): PhysicalNodeSceneController {
     modules: {
       espGroup,
       lmGroup,
-      trGroup,
       bmeGroup,
       soilGroup,
       dsGroup,
@@ -406,10 +405,9 @@ export function buildPhysicalNodeScene(): PhysicalNodeSceneController {
   mountBoard(lmGroup, -0.78, 0.18, -0.14, 0.37, [-0.18, 0.0, 1.42]);
   mountBoard(espGroup, 0.64, 0.12, -0.14, 0.32, [0.18, 0.0, 1.56]);
 
-  // Bottom row: MicroSD (left), NPN Switch (center), 2CH Relay (right)
-  mountBoard(sdGroup, -1.02, -1.04, -0.14, 0.34, [-0.24, -0.14, 1.25], 0);
-  mountBoard(trGroup, -0.22, -1.04, -0.14, 0.3, [0.0, -0.14, 1.22]);
-  mountBoard(relayGroup, 0.76, -1.02, -0.14, 0.34, [0.24, -0.14, 1.32]);
+  // Bottom row: MicroSD (left) & 2CH Relay (right) cleanly spaced
+  mountBoard(sdGroup, -0.68, -1.04, -0.14, 0.36, [-0.20, -0.14, 1.25], 0);
+  mountBoard(relayGroup, 0.68, -1.02, -0.14, 0.36, [0.20, -0.14, 1.32]);
 
   // Clean Internal Harness Lines connecting DIN modules inside Box
   const internalWireMatRed = factory.createToon('#dc2626');

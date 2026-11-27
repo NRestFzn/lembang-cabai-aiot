@@ -11,9 +11,6 @@ export type EspPartKey =
   | 'H2'
   | 'RC'
   | 'LM2596'
-  | 'TRANSISTOR'
-  | 'RESISTOR'
-  | 'LED'
   | 'JUMPER'
   | 'BME280'
   | 'SOIL_MOISTURE'
@@ -119,27 +116,6 @@ export const ESP32_PARTS: Record<EspPartKey, EspPartDetail> = {
     spec: 'Step-Down/Regulator 3A · Induktor 330µH · Trimpot · Voltmeter',
     role: 'Menjaga tegangan rel 5V stabil dan mencegah brownout pada ESP32 saat aktuator pembibitan aktif.',
     pins: 'IN+ / IN- (Screw Terminal) → OUT+ / OUT- (5V Stabil).',
-  },
-  TRANSISTOR: {
-    designator: 'Q1',
-    name: 'Modul Saklar Transistor + Dioda Flyback',
-    spec: 'Driver Transistor + Dioda 1N4007 + Resistor Basis + Terminal',
-    role: 'Mengubah sinyal logika kecil ESP32 (3.3V) menjadi saklar daya dan meredam lonjakan balik induktif dari solenoid/pompa 12V.',
-    pins: 'LOGIC IN (GPIO) · POWER IN (12V/GND) · LOAD OUT.',
-  },
-  RESISTOR: {
-    designator: 'R1–R3',
-    name: 'Modul LED + Resistor (I = V / R)',
-    spec: 'Resistor 220Ω / 1kΩ / 10kΩ · Jumper Header 2×4 · Cap 100µF · Switch',
-    role: 'Menyediakan resistor pull-up & pembatas arus indikator status beserta jumper seleksi beban untuk uji jalur sensor & LED.',
-    pins: '5V IN (USB-C) · TP1 / TP2 · JP1 (220 / 1K / 10K).',
-  },
-  LED: {
-    designator: 'D1',
-    name: 'LED Indikator Status 5mm',
-    spec: '5mm Diffused LED (Anoda + Katoda)',
-    role: 'Indikator visual status penyiraman aktif atau peringatan risiko patek pada box kontrol.',
-    pins: 'Anoda (via resistor) ↔ Katoda (GND).',
   },
   JUMPER: {
     designator: 'W1–W5',
@@ -352,16 +328,6 @@ export const CIRCUIT_CATALOG: CircuitCatalogItem[] = [
     targetPos: [5.85, 0.35, -1.45],
   },
   {
-    part: 'TRANSISTOR',
-    code: 'Q1',
-    label: 'Driver Transistor + Dioda',
-    category: 'Aktuator',
-    voltage: '3.3V → 12V',
-    pins: ['LOGIC IN', 'PWR 12V', 'LOAD OUT'],
-    focusOffset: [1.2, 3.0, 2.8],
-    targetPos: [0.55, 0.25, 0.7],
-  },
-  {
     part: 'PUMP',
     code: 'PMP1',
     label: 'Pompa Diaphragm 12V',
@@ -380,16 +346,6 @@ export const CIRCUIT_CATALOG: CircuitCatalogItem[] = [
     pins: ['12V+ (NO2)', 'GND-'],
     focusOffset: [1.3, 3.2, 3.0],
     targetPos: [5.85, 0.45, 2.35],
-  },
-  {
-    part: 'RESISTOR',
-    code: 'R1–R3',
-    label: 'Modul LED + Resistor',
-    category: 'Kontrol',
-    voltage: '5V / 3.3V',
-    pins: ['5V IN', '220Ω', '1kΩ', '10kΩ'],
-    focusOffset: [1.2, 3.0, 2.8],
-    targetPos: [3.15, 0.2, 0.85],
   },
   {
     part: 'JUMPER',

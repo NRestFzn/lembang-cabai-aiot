@@ -66,7 +66,7 @@ export const CIRCUIT_TOUR_STEPS: CircuitTourStep[] = [
   {
     id: 'solar',
     part: 'SOLAR',
-    stage: '01 / 13 · Panen Energi',
+    stage: '01 / 12 · Panen Energi',
     title: 'Panel Surya 6V / 10W',
     description:
       'Dipasang di puncak tiang node (~1,6 m) untuk memanen energi matahari sepanjang hari. Output DC (PV+ merah, PV- hitam) langsung mengalir menuju modul CN3791 MPPT charger.',
@@ -87,7 +87,7 @@ export const CIRCUIT_TOUR_STEPS: CircuitTourStep[] = [
   {
     id: 'mppt',
     part: 'MPPT',
-    stage: '02 / 13 · MPPT & Charging',
+    stage: '02 / 12 · MPPT & Charging',
     title: 'CN3791 MPPT Solar Charger',
     description:
       'Melacak titik daya maksimum saat cuaca Lembang mendung atau berkabut agar pengisian tetap optimal, lalu menyalurkan daya aman via bus BAT+ (kolom 4) & BAT- (kolom 13) ke paket baterai.',
@@ -114,7 +114,7 @@ export const CIRCUIT_TOUR_STEPS: CircuitTourStep[] = [
   {
     id: 'battery',
     part: 'BATTERY',
-    stage: '03 / 13 · Penyimpanan Daya 12.8V',
+    stage: '03 / 12 · Penyimpanan Daya 12.8V',
     title: 'Paket Baterai LiFePO4 4S 12.8V (6000mAh)',
     description:
       'Menyimpan cadangan energi 76.8Wh yang tahan suhu dingin. Jalur positif 12.8V di kolom 4 memasok dua cabang: ke step-down LM2596 (untuk ESP32) dan langsung ke Relay COM1 untuk beban 12V.',
@@ -152,7 +152,7 @@ export const CIRCUIT_TOUR_STEPS: CircuitTourStep[] = [
   {
     id: 'lm2596',
     part: 'LM2596',
-    stage: '04 / 13 · Regulasi 12.8V → 5.00V',
+    stage: '04 / 12 · Regulasi 12.8V → 5.00V',
     title: 'Buck Converter LM2596 (5.00V)',
     description:
       'Menurunkan tegangan baterai 12.8V menjadi 5.00V stabil agar ESP32 aman dari lonjakan & brownout. Dari terminal kanan OUT+ & OUT-, kabel merah-hitam masuk lewat celah tengah langsung ke pin VIN & GND ESP32.',
@@ -186,7 +186,7 @@ export const CIRCUIT_TOUR_STEPS: CircuitTourStep[] = [
   {
     id: 'esp32',
     part: 'U1',
-    stage: '05 / 13 · Otak Kontrol & Bus 3.3V',
+    stage: '05 / 12 · Otak Kontrol & Bus 3.3V',
     title: 'ESP32-DevKit (WROOM-32 + USB-C)',
     description:
       'Menyala dari suplai 5V di pin VIN & GND (dengan port USB-C untuk flashing). Regulator onboard AMS1117 menghasilkan 3.3V ke rail bawah (kabel oranye) untuk memberi daya sensor, sementara MCU menghitung VPD & skor patek.',
@@ -214,7 +214,7 @@ export const CIRCUIT_TOUR_STEPS: CircuitTourStep[] = [
   {
     id: 'bme280',
     part: 'BME280',
-    stage: '06 / 13 · Sensor Udara & Embun',
+    stage: '06 / 12 · Sensor Udara & Embun',
     title: 'Sensor Mikroiklim Kanopi GY-BME280',
     description:
       'Ditenagai 3.3V dari rail bawah (kolom 5), sensor ini mengukur suhu, kelembaban relatif (RH), dan tekanan udara tajuk cabai lalu mengirimkannya ke ESP32 via jalur I2C SCL (GPIO22) & SDA (GPIO21).',
@@ -239,7 +239,7 @@ export const CIRCUIT_TOUR_STEPS: CircuitTourStep[] = [
   {
     id: 'soil',
     part: 'SOIL_MOISTURE',
-    stage: '07 / 13 · Sensor Kelembaban Tanah',
+    stage: '07 / 12 · Sensor Kelembaban Tanah',
     title: 'Capacitive Soil Moisture v1.2',
     description:
       'Menggunakan prinsip kapasitif anti-korosi (suplai 3.3V) untuk memantau kadar air tanah zona perakaran cabai, lalu mengirimkan sinyal analog AOUT (kabel kuning) ke pin ADC1 GPIO34 ESP32.',
@@ -262,7 +262,7 @@ export const CIRCUIT_TOUR_STEPS: CircuitTourStep[] = [
   {
     id: 'ds18b20',
     part: 'DS18B20',
-    stage: '08 / 13 · Sensor Suhu Tanah',
+    stage: '08 / 12 · Sensor Suhu Tanah',
     title: 'Probe Suhu Tanah Waterproof DS18B20',
     description:
       'Probe baja tahan air dengan adapter pull-up 4.7kΩ membaca suhu perakaran untuk mengkalibrasi risiko embun malam. Data digital 1-Wire DQ mengalir lewat kolom 40 menuju GPIO4 ESP32.',
@@ -286,7 +286,7 @@ export const CIRCUIT_TOUR_STEPS: CircuitTourStep[] = [
   {
     id: 'cam',
     part: 'ESP32CAM',
-    stage: '09 / 13 · Konfirmasi Visual Daun',
+    stage: '09 / 12 · Konfirmasi Visual Daun',
     title: 'ESP32-CAM (OV2640 2MP)',
     description:
       'Mengambil daya 5V dari rail atas (kolom 42). Saat skor patek tinggi, ESP32 membangunkan ESP32-CAM lewat jalur serial UART2 (U0R/U0T) untuk memotret gejala bercak patek secara visual.',
@@ -311,7 +311,7 @@ export const CIRCUIT_TOUR_STEPS: CircuitTourStep[] = [
   {
     id: 'microsd',
     part: 'MICROSD',
-    stage: '10 / 13 · Penyimpanan Offline-First',
+    stage: '10 / 12 · Penyimpanan Offline-First',
     title: 'MicroSD Card SPI Logger',
     description:
       'Ditenagai 5V dari rail atas (kolom 55). Semua log suhu, RH, kelembaban tanah, dan keputusan siram disimpan lokal via bus SPI (CS/SCK/MOSI/MISO) agar aman saat sinyal lereng Lembang putus.',
@@ -338,35 +338,9 @@ export const CIRCUIT_TOUR_STEPS: CircuitTourStep[] = [
     durationSec: 5.5,
   },
   {
-    id: 'driver',
-    part: 'TRANSISTOR',
-    stage: '11 / 13 · Driver Indikator & Proteksi',
-    title: 'NPN Switch (2N2222) + LED Trainer',
-    description:
-      'Sinyal logika 3.3V dari GPIO2 ESP32 (kolom 41) mengendalikan transistor NPN + dioda flyback 1N4007 agar aman menggerakkan indikator status di papan LED Trainer tanpa membebani pin MCU.',
-    flowSummary: 'ESP32 GPIO2 → NPN Switch Q1 → LED Indikator Status D1',
-    accentColor: '#22c55e',
-    target: [3.8, 0.2, 3.85],
-    camPos: [3.8, 11.4, 4.2],
-    ringPos: [3.8, 0.30, 4.35],
-    frameSize: [5.15, 2.65],
-    flowPaths: [
-      [
-        [col(28), 0.48, Z_B],
-        [col(41), 0.48, -1.2],
-        [col(41), 0.48, 2.5],
-        [col(41), 0.1, 5.12],
-        [1.8, 0.32, 4.78],
-        [1.94, 0.1, 5.32],
-        [5.8, 0.2, 5.42],
-      ],
-    ],
-    durationSec: 5.5,
-  },
-  {
     id: 'relay',
     part: 'RELAY',
-    stage: '12 / 13 · Saklar Daya Optocoupler',
+    stage: '11 / 12 · Saklar Daya Optocoupler',
     title: 'Modul Relay 2-Channel 5V',
     description:
       'Menerima perintah logika IN1 (GPIO26, hijau) & IN2 (GPIO27, pink) serta koil 5V untuk menyambung-putuskan suplai baterai 12.8V pada terminal COM1/COM2 ke aktuator dengan isolasi optocoupler.',
@@ -397,10 +371,10 @@ export const CIRCUIT_TOUR_STEPS: CircuitTourStep[] = [
   {
     id: 'actuators',
     part: 'PUMP',
-    stage: '13 / 13 · Eksekusi Irigasi Presisi 12V',
+    stage: '12 / 12 · Eksekusi Pembibitan Komunal 12V',
     title: 'Pompa Diaphragm & Solenoid Valve 12V',
     description:
-      'Saat keputusan AIoT adalah SIRAM, Relay NO1 & NO2 mengalirkan 12.8V untuk menghidupkan pompa dan membuka katup solenoid kuningan. Saat TUNDA malam hari, katup terkunci agar kanopi tidak basah berkepanjangan.',
+      'Saat keputusan AIoT adalah SIRAM untuk zona pembibitan komunal Poktan, Relay NO1 & NO2 mengalirkan 12.8V ke pompa & katup solenoid. Saat TUNDA malam hari, katup terkunci otomatis agar bibit terlindung dari embun berlebih.',
     flowSummary: 'Relay NO1/NO2 (12.8V) → Pompa & Solenoid → Kembali ke -GND (Kolom 66)',
     accentColor: '#ef4444',
     target: [9.0, 0.2, 0.05],
@@ -447,9 +421,6 @@ const PART_TO_TOUR_ID: Partial<Record<EspPartKey, string>> = {
   DS18B20: 'ds18b20',
   ESP32CAM: 'cam',
   MICROSD: 'microsd',
-  TRANSISTOR: 'driver',
-  RESISTOR: 'driver',
-  LED: 'driver',
   RELAY: 'relay',
   PUMP: 'actuators',
   SOLENOID: 'actuators',

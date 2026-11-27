@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { ACCENT_SWATCHES, LEAF_CONDITION_META } from '../data/parts';
-import { getNightFactor } from '../simulation/riskEngine';
+import { evaluateCanopyLeafCondition, getNightFactor } from '../simulation/riskEngine';
 import {
   AccentId,
   LeafCondition,
@@ -75,7 +75,6 @@ export function buildGardenScene(): GardenSceneController {
     modules: {
       espGroup,
       lmGroup,
-      trGroup,
       bmeGroup,
       soilGroup,
       dsGroup,
@@ -159,6 +158,7 @@ export function buildGardenScene(): GardenSceneController {
   const blossomMat = factory.createToon('#fffdf7');
   const waterDropMat = factory.createToon('#66c7f4', { transparent: true, opacity: 0.9 });
   const patekSpotMat = new THREE.MeshBasicMaterial({ color: '#472d1b' });
+  const severeSpotMat = new THREE.MeshBasicMaterial({ color: '#24130a' });
   const ledOnMat = new THREE.MeshBasicMaterial({ color: '#4ade80' });
   const ledValveMat = new THREE.MeshBasicMaterial({ color: '#facc15' });
   const ledCamMat = new THREE.MeshBasicMaterial({ color: '#f87171' });
@@ -265,23 +265,24 @@ export function buildGardenScene(): GardenSceneController {
     phase: number;
     droplets: THREE.Mesh[];
     patekSpots: THREE.Mesh[];
+    severeSpots: THREE.Mesh[];
     leafMeshes: THREE.Object3D[];
   }
   const plantRefs: PlantAnimRef[] = [];
 
-  // Plants 0..1 are inside the ESP32-CAM FOV (live simulation targets starting healthy).
-  // Plants 2..9 outside the FOV showcase every condition from normal (healthy) to diseased (patek_early).
+  // Upper terrace (0..4) starts healthy & reacts dynamically to irrigation + microclimate (0..1 under CAM+BME280).
+  // Lower terrace (5..9) holds static reference showcase of every leaf condition type (healthy -> patek_infected).
   const BASE_PLANT_CONDITIONS: LeafCondition[] = [
     'healthy',
     'healthy',
     'healthy',
-    'wet_risk',
-    'yellowing',
+    'healthy',
+    'healthy',
     'healthy',
     'wet_risk',
     'yellowing',
     'patek_early',
-    'patek_early',
+    'patek_infected',
   ];
 
   // Smooth ovate-lanceolate chili leaf in local +Z outward space (top surface = +Y)
@@ -410,6 +411,7 @@ export function buildGardenScene(): GardenSceneController {
     leafMeshes: THREE.Object3D[],
     droplets: THREE.Mesh[],
     patekSpots: THREE.Mesh[],
+    severeSpots: THREE.Mesh[],
     addSpot: boolean
   ) => {
     const holder = new THREE.Group();
@@ -451,6 +453,12 @@ export function buildGardenScene(): GardenSceneController {
       spot.scale.setScalar(0.001);
       tilt.add(spot);
       patekSpots.push(spot);
+
+      const severeSpot = new THREE.Mesh(spotGeo, severeSpotMat);
+      severeSpot.position.set(0.011, 0.0095, 0.095);
+      severeSpot.scale.setScalar(0.001);
+      tilt.add(severeSpot);
+      severeSpots.push(severeSpot);
     }
 
     holder.add(tilt);
@@ -464,7 +472,8 @@ export function buildGardenScene(): GardenSceneController {
     rotY: number,
     outTilt: number,
     mat: THREE.Material,
-    podScale = 1
+    podScale = 1,
+    severeSpots?: THREE.Mesh[]
   ) => {
     const podGroup = new THREE.Group();
     podGroup.position.set(...pos);
@@ -482,6 +491,15 @@ export function buildGardenScene(): GardenSceneController {
     const pod = factory.createOutlinedMesh(chiliPodGeo, mat, 1.12);
     pod.position.y = -0.055;
     podGroup.add(pod);
+
+    if (severeSpots) {
+      const podLesion = new THREE.Mesh(spotGeo, severeSpotMat);
+      podLesion.rotation.x = Math.PI / 2;
+      podLesion.position.set(0.004, -0.145, 0.018);
+      podLesion.scale.setScalar(0.001);
+      podGroup.add(podLesion);
+      severeSpots.push(podLesion);
+    }
 
     parent.add(podGroup);
   };
@@ -571,11 +589,12 @@ export function buildGardenScene(): GardenSceneController {
 
     const droplets: THREE.Mesh[] = [];
     const patekSpots: THREE.Mesh[] = [];
+    const severeSpots: THREE.Mesh[] = [];
     const leafMeshes: THREE.Object3D[] = [];
 
     // 2 small lower-stem leaves protruding cleanly outward
-    attachChiliLeaf(pGroup, [0, 0.24, 0], 0.5, 0.14, 0.78, false, pLeafMat, pLeafYoungMat, plantIndex, leafMeshes, droplets, patekSpots, false);
-    attachChiliLeaf(pGroup, [0, 0.29, 0], 3.6, 0.14, 0.78, false, pLeafMat, pLeafYoungMat, plantIndex, leafMeshes, droplets, patekSpots, false);
+    attachChiliLeaf(pGroup, [0, 0.24, 0], 0.5, 0.14, 0.78, false, pLeafMat, pLeafYoungMat, plantIndex, leafMeshes, droplets, patekSpots, severeSpots, false);
+    attachChiliLeaf(pGroup, [0, 0.29, 0], 3.6, 0.14, 0.78, false, pLeafMat, pLeafYoungMat, plantIndex, leafMeshes, droplets, patekSpots, severeSpots, false);
 
     // 3 symmetric Primary Fork Limbs (0°, 120°, 240°) held inside the bamboo ajir cage
     for (let b = 0; b < 3; b++) {
@@ -602,8 +621,8 @@ export function buildGardenScene(): GardenSceneController {
       limbPivot.add(limbJoint);
 
       // 2 mid-limb leaves pointing tangential-outward
-      attachChiliLeaf(limbPivot, [0, 0.18, 0], 0.45, 0.18, 0.9, false, pLeafMat, pLeafYoungMat, plantIndex, leafMeshes, droplets, patekSpots, b === 0);
-      attachChiliLeaf(limbPivot, [0, 0.27, 0], Math.PI - 0.45, 0.18, 0.88, false, pLeafMat, pLeafYoungMat, plantIndex, leafMeshes, droplets, patekSpots, false);
+      attachChiliLeaf(limbPivot, [0, 0.18, 0], 0.45, 0.18, 0.9, false, pLeafMat, pLeafYoungMat, plantIndex, leafMeshes, droplets, patekSpots, severeSpots, b === 0);
+      attachChiliLeaf(limbPivot, [0, 0.27, 0], Math.PI - 0.45, 0.18, 0.88, false, pLeafMat, pLeafYoungMat, plantIndex, leafMeshes, droplets, patekSpots, severeSpots, false);
 
       // Hanging red / green cabai keriting from mid-limb node (visible below foliage!)
       attachChiliPod(
@@ -612,7 +631,8 @@ export function buildGardenScene(): GardenSceneController {
         b * 0.7,
         0.38, // compensates for limbPivot -0.42 so chili hangs straight down!
         b === 2 ? chiliGreenMat : chiliRedMat,
-        0.95
+        0.95,
+        severeSpots
       );
 
       // 2 Secondary Twigs fanning sideways-upward from limb tip (y = 0.36)
@@ -633,13 +653,13 @@ export function buildGardenScene(): GardenSceneController {
         subTilt.add(subTwig);
 
         // 3 upper-twig leaves pointing strictly outward/tangential
-        attachChiliLeaf(subTilt, [0, 0.13, 0], s === 0 ? 0.25 : Math.PI - 0.25, 0.16, 0.95, false, pLeafMat, pLeafYoungMat, plantIndex, leafMeshes, droplets, patekSpots, s === 0);
-        attachChiliLeaf(subTilt, [0, 0.21, 0], Math.PI / 2, 0.22, 0.92, false, pLeafMat, pLeafYoungMat, plantIndex, leafMeshes, droplets, patekSpots, false);
-        attachChiliLeaf(subTilt, [0, 0.27, 0], s === 0 ? Math.PI - 0.3 : 0.3, 0.26, 0.82, true, pLeafMat, pLeafYoungMat, plantIndex, leafMeshes, droplets, patekSpots, false);
+        attachChiliLeaf(subTilt, [0, 0.13, 0], s === 0 ? 0.25 : Math.PI - 0.25, 0.16, 0.95, false, pLeafMat, pLeafYoungMat, plantIndex, leafMeshes, droplets, patekSpots, severeSpots, s === 0);
+        attachChiliLeaf(subTilt, [0, 0.21, 0], Math.PI / 2, 0.22, 0.92, false, pLeafMat, pLeafYoungMat, plantIndex, leafMeshes, droplets, patekSpots, severeSpots, false);
+        attachChiliLeaf(subTilt, [0, 0.27, 0], s === 0 ? Math.PI - 0.3 : 0.3, 0.26, 0.82, true, pLeafMat, pLeafYoungMat, plantIndex, leafMeshes, droplets, patekSpots, severeSpots, false);
 
         // Hanging Cabai Keriting fruit dangling from upper twig node (y = 0.26)
         const podMat = chiliPodMaterials[(b * 2 + s) % chiliPodMaterials.length];
-        attachChiliPod(subTilt, [0, 0.26, 0], s === 0 ? 0.4 : -0.4, 0.2, podMat, 1.0);
+        attachChiliPod(subTilt, [0, 0.26, 0], s === 0 ? 0.4 : -0.4, 0.2, podMat, 1.0, severeSpots);
 
         // Blossom on alternate twigs
         if ((b + s) % 2 === 1) {
@@ -691,11 +711,12 @@ export function buildGardenScene(): GardenSceneController {
         leafMeshes,
         droplets,
         patekSpots,
+        severeSpots,
         cl === 1
       );
     }
     // Crown hanging red cabai keriting from upper stem
-    attachChiliPod(pGroup, [0, 0.78, 0], 1.1, 0.08, chiliRedMat, 1.02);
+    attachChiliPod(pGroup, [0, 0.78, 0], 1.1, 0.08, chiliRedMat, 1.02, severeSpots);
 
     plantsGroup.add(pGroup);
     plantRefs.push({
@@ -709,6 +730,7 @@ export function buildGardenScene(): GardenSceneController {
       phase,
       droplets,
       patekSpots,
+      severeSpots,
       leafMeshes,
     });
   };
@@ -826,7 +848,7 @@ export function buildGardenScene(): GardenSceneController {
   ]);
   addOutlinedTube(irrigationGroup, pipeInCurve, 0.025, 0.006, pipeMat, 16);
 
-  // Real 12V Brass Solenoid Valve assembly (`solenoid`)
+  // Real 12V Brass Solenoid Valve assembly (`solenoid`) feeding main terraced beds
   const solenoidGroup = new THREE.Group();
   solenoidGroup.position.set(-1.98, 0.38, 0.22);
   realSolMod.position.set(0, -0.052, 0);
@@ -904,7 +926,7 @@ export function buildGardenScene(): GardenSceneController {
   lowerLine.position.set(0.5, 0.04, 0.66);
   irrigationGroup.add(lowerLine);
 
-  // 6 Micro-sprayer / drip emitters along both beds
+  // 6 Micro-sprayer / drip emitters along both main beds (Mode Otomatis)
   const emitterPositions: Array<[number, number, number]> = [
     [-1.0, 0.56, -0.72],
     [0.45, 0.56, -0.72],
@@ -933,12 +955,52 @@ export function buildGardenScene(): GardenSceneController {
 
   tagPart(irrigationGroup, 'solenoid');
 
-  // --- Animated Water Spray Particles ---
-  const sprayCount = 72;
+  // --- Tier 1 Visual Prop: Animated Manual Watering Can (Gembor) ---
+  const gemborMat = factory.createToon('#3b82f6');
+  const gemborGroup = new THREE.Group();
+  const gemborRestPos = new THREE.Vector3(2.55, -0.05, 1.86);
+  gemborGroup.position.copy(gemborRestPos);
+  gemborGroup.rotation.y = -0.5;
+  const gemborBody = factory.createOutlinedMesh(
+    trackGeo(new THREE.CylinderGeometry(0.14, 0.16, 0.24, 12)),
+    gemborMat,
+    1.04
+  );
+  const gemborHandle = factory.createOutlinedMesh(
+    trackGeo(new THREE.TorusGeometry(0.1, 0.018, 6, 14, Math.PI)),
+    gemborMat,
+    1.06
+  );
+  gemborHandle.position.set(-0.04, 0.11, 0);
+  gemborHandle.rotation.z = 0.25;
+  const gemborSpout = factory.createOutlinedMesh(
+    trackGeo(new THREE.CylinderGeometry(0.018, 0.032, 0.28, 8)),
+    gemborMat,
+    1.06
+  );
+  gemborSpout.rotation.z = -0.85;
+  gemborSpout.position.set(0.19, 0.07, 0);
+  const gemborHead = factory.createOutlinedMesh(
+    trackGeo(new THREE.CylinderGeometry(0.044, 0.022, 0.042, 8)),
+    brassMat,
+    1.08
+  );
+  gemborHead.rotation.z = -0.85;
+  gemborHead.position.set(0.30, 0.15, 0);
+  const gemborNozzleTip = new THREE.Object3D();
+  gemborNozzleTip.position.set(0.32, 0.16, 0);
+  gemborGroup.add(gemborBody, gemborHandle, gemborSpout, gemborHead, gemborNozzleTip);
+  scene.add(gemborGroup);
+
+  const gemborNozzleWorld = new THREE.Vector3();
+  let gemborLift = 0;
+
+  // --- Animated Water Spray Particles (Nursery Mist in AIoT vs Gembor Pour in Manual Mode) ---
+  const sprayCount = 66;
   const sprayDrops: Array<{ mesh: THREE.Mesh; emitterIdx: number; phase: number; spreadX: number; spreadZ: number }> = [];
   const sprayGroup = new THREE.Group();
   scene.add(sprayGroup);
-  const sprayDropGeo = trackGeo(new THREE.SphereGeometry(0.024, 6, 6));
+  const sprayDropGeo = trackGeo(new THREE.SphereGeometry(0.021, 6, 6));
   for (let i = 0; i < sprayCount; i++) {
     const m = new THREE.Mesh(sprayDropGeo, waterDropMat);
     m.visible = false;
@@ -948,8 +1010,33 @@ export function buildGardenScene(): GardenSceneController {
       mesh: m,
       emitterIdx: i % emitterPositions.length,
       phase: (i / sprayCount) % 1,
-      spreadX: Math.cos(angle) * (0.28 + (i % 3) * 0.11),
-      spreadZ: Math.sin(angle) * 0.35 - 0.25,
+      spreadX: Math.cos(angle) * (0.14 + (i % 3) * 0.05),
+      spreadZ: Math.sin(angle) * 0.18,
+    });
+  }
+
+  // --- Spore-Dispersion & Highland Wind Particles (Upper -> Lower Terrace Flow) ---
+  const sporeCount = 26;
+  const sporeParticles: Array<{ mesh: THREE.Mesh; baseX: number; phase: number; yOff: number }> = [];
+  const sporeMat = trackMat(
+    new THREE.MeshBasicMaterial({
+      color: '#d97706',
+      transparent: true,
+      opacity: 0.72,
+    })
+  );
+  const sporeGeo = trackGeo(new THREE.SphereGeometry(0.022, 6, 6));
+  const sporeGroup = new THREE.Group();
+  scene.add(sporeGroup);
+  for (let i = 0; i < sporeCount; i++) {
+    const sm = new THREE.Mesh(sporeGeo, sporeMat);
+    sm.visible = false;
+    sporeGroup.add(sm);
+    sporeParticles.push({
+      mesh: sm,
+      baseX: -1.7 + ((i * 0.83) % 4.1),
+      phase: (i / sporeCount) % 1,
+      yOff: (i % 4) * 0.09,
     });
   }
 
@@ -1163,14 +1250,13 @@ export function buildGardenScene(): GardenSceneController {
     boxExplodeItems.push({ obj: mod, baseZ: z, offsetZ, baseX: x, offsetX });
   };
 
-  // All 7 Real Internal Hardware Boards inside IP65 Box
+  // Bottom DIN Boards inside IP65 Box: MicroSD & Relay 2CH
   mountDioramaBoard(mpptGroup, -0.14, 0.19, -0.028, 0.068, 0.34, -0.04);
   mountDioramaBoard(batGroup, 0.11, 0.195, -0.028, 0.075, 0.34, 0.04);
   mountDioramaBoard(lmGroup, -0.14, 0.02, -0.028, 0.066, 0.42, -0.04);
   mountDioramaBoard(espGroup, 0.11, 0.01, -0.028, 0.058, 0.46, 0.04);
-  mountDioramaBoard(sdGroup, -0.18, -0.18, -0.028, 0.058, 0.36, -0.05);
-  mountDioramaBoard(trGroup, -0.03, -0.18, -0.028, 0.052, 0.36, 0.0);
-  mountDioramaBoard(relayGroup, 0.14, -0.18, -0.028, 0.06, 0.38, 0.05);
+  mountDioramaBoard(sdGroup, -0.12, -0.18, -0.028, 0.062, 0.36, -0.04);
+  mountDioramaBoard(relayGroup, 0.12, -0.18, -0.028, 0.064, 0.38, 0.04);
 
   // Detachable Front Polycarbonate Window Door + Status LEDs
   const frontDoor = new THREE.Group();
@@ -1569,11 +1655,11 @@ export function buildGardenScene(): GardenSceneController {
   const cameraAnchors: Record<PartId, THREE.Vector3> = {
     solar: new THREE.Vector3(poleX, 2.55, poleZ),
     enclosure: new THREE.Vector3(poleX + 0.14, 1.68, poleZ),
-    esp32cam: new THREE.Vector3(poleX + 0.32, 2.08, poleZ),
+    esp32cam: new THREE.Vector3(poleX + 0.34, 2.12, poleZ),
     dht22: new THREE.Vector3(-0.95, 1.18, poleZ),
-    soil_probe: new THREE.Vector3(-0.97, 0.58, -0.83),
+    soil_probe: new THREE.Vector3(-0.92, 0.58, -0.83),
     solenoid: new THREE.Vector3(-1.98, 0.45, 0.22),
-    pump: new THREE.Vector3(-2.64, 0.58, 0.58),
+    pump: new THREE.Vector3(-2.66, 0.55, 0.58),
     terrace: new THREE.Vector3(0.4, 0.1, 0.1),
     chili_plant: new THREE.Vector3(0.45, 1.22, -1.12),
   };
@@ -1588,14 +1674,15 @@ export function buildGardenScene(): GardenSceneController {
     'pump',
   ];
 
-  // Interactive leaf hotspots: 2 live CAM-monitored plants (0, 1) + non-CAM spectrum (healthy -> patek_early)
+  // Interactive leaf hotspots: 2 live upper CAM+canopy plants (0, 1) + full lower-terrace condition showcase (5, 6, 7, 8, 9)
   const FEATURED_LEAVES: Array<{ plantIndex: number; leafIndex: number }> = [
     { plantIndex: 0, leafIndex: 27 },
     { plantIndex: 1, leafIndex: 27 },
-    { plantIndex: 2, leafIndex: 27 },
-    { plantIndex: 3, leafIndex: 27 },
+    { plantIndex: 5, leafIndex: 27 },
+    { plantIndex: 6, leafIndex: 27 },
     { plantIndex: 7, leafIndex: 27 },
     { plantIndex: 8, leafIndex: 27 },
+    { plantIndex: 9, leafIndex: 27 },
   ];
 
   // Helper colors for smooth Day <-> Night interpolation
@@ -1680,54 +1767,96 @@ export function buildGardenScene(): GardenSceneController {
     const globalSpotScale =
       metrics.symptomSeverity > 0.1 ? THREE.MathUtils.clamp(metrics.symptomSeverity * 1.4, 0.001, 1.25) : 0.001;
 
+    const manualPouring = !metrics.aiotMode && metrics.isWatering;
+    const isDrought = metrics.soilMoisturePct <= 26;
     plantRefs.forEach((pr) => {
       const sway = Math.sin(elapsed * 1.65 + pr.phase) * (weather === 'rainy' ? 0.055 : 0.025);
-      pr.group.rotation.z = sway;
-      pr.group.rotation.x = Math.cos(elapsed * 1.2 + pr.phase) * 0.015;
-
-      const inCamFov = pr.plantIndex === 0 || pr.plantIndex === 1;
+      const isUpperTerrace = pr.plantIndex <= 4;
+      const inCamOrCanopy = pr.plantIndex === 0 || pr.plantIndex === 1;
       let cond: LeafCondition = pr.baseCondition;
       let plantDropScale = 0.001;
       let plantSpotScale = 0.001;
+      let plantSevereSpotScale = 0.001;
 
-      if (inCamFov) {
-        // Real live risk simulation focuses directly on the 2 plants inside ESP32-CAM FOV
-        if (metrics.symptomSeverity >= 0.4 || metrics.patekRiskPct >= 75) {
-          if (pr.plantIndex === 1) {
-            cond = 'patek_early';
-          } else {
-            cond = metrics.symptomSeverity >= 0.7 ? 'patek_early' : 'yellowing';
-          }
-        } else if (metrics.symptomSeverity >= 0.15 || metrics.patekRiskPct >= 58) {
-          cond = pr.plantIndex === 1 ? 'yellowing' : 'wet_risk';
-        } else if (metrics.leafWetnessPct >= 42 || (night > 0.45 && metrics.relativeHumidity >= 84)) {
+      if (inCamOrCanopy) {
+        cond = evaluateCanopyLeafCondition(pr.plantIndex as 0 | 1, metrics);
+        const droughtYellowOnly = isDrought && metrics.patekRiskPct < 52 && metrics.symptomSeverity < 0.12;
+        plantDropScale =
+          droughtYellowOnly
+            ? 0.001
+            : manualPouring || cond === 'wet_risk' || cond === 'patek_early' || cond === 'patek_infected'
+            ? Math.max(0.62, dropScale)
+            : dropScale;
+        plantSpotScale =
+          droughtYellowOnly
+            ? 0.001
+            : cond === 'patek_infected'
+            ? Math.max(1.35, globalSpotScale)
+            : cond === 'patek_early'
+            ? Math.max(0.9, globalSpotScale)
+            : cond === 'yellowing'
+            ? Math.max(0.45, globalSpotScale)
+            : globalSpotScale;
+        plantSevereSpotScale = !droughtYellowOnly && cond === 'patek_infected' ? 1.25 : 0.001;
+      } else if (isUpperTerrace) {
+        // Remaining upper terrace plants (2, 3, 4) also progress through patek_early -> patek_infected (or drought yellowing)
+        if (metrics.symptomSeverity >= 0.72 || (metrics.patekRiskPct >= 88 && metrics.symptomSeverity >= 0.5)) {
+          cond = 'patek_infected';
+        } else if (metrics.symptomSeverity >= 0.42 || (metrics.patekRiskPct >= 75 && metrics.symptomSeverity >= 0.25)) {
+          cond = 'patek_early';
+        } else if (metrics.symptomSeverity >= 0.16 || metrics.patekRiskPct >= 56 || isDrought) {
+          cond = 'yellowing';
+        } else if (
+          manualPouring ||
+          metrics.leafWetnessPct >= 40 ||
+          weather === 'rainy' ||
+          weather === 'foggy' ||
+          (night > 0.5 && metrics.relativeHumidity >= 86)
+        ) {
           cond = 'wet_risk';
         } else {
           cond = 'healthy';
         }
-
+        const droughtYellowOnly = isDrought && metrics.patekRiskPct < 56 && metrics.symptomSeverity < 0.16;
         plantDropScale =
-          cond === 'wet_risk' || cond === 'patek_early' ? Math.max(0.55, dropScale) : dropScale;
+          droughtYellowOnly
+            ? 0.001
+            : manualPouring || cond === 'wet_risk' || cond === 'patek_early' || cond === 'patek_infected'
+            ? Math.max(0.55, dropScale)
+            : dropScale;
         plantSpotScale =
-          cond === 'patek_early'
-            ? Math.max(0.85, globalSpotScale)
+          droughtYellowOnly
+            ? 0.001
+            : cond === 'patek_infected'
+            ? Math.max(1.3, globalSpotScale)
+            : cond === 'patek_early'
+            ? Math.max(0.9, globalSpotScale)
             : cond === 'yellowing'
             ? Math.max(0.42, globalSpotScale)
             : globalSpotScale;
+        plantSevereSpotScale = !droughtYellowOnly && cond === 'patek_infected' ? 1.2 : 0.001;
       } else {
-        // Plants outside CAM FOV keep full normal -> diseased variety as visual comparison samples
+        // Lower terrace (plants 5..9) stays as clear reference showcase for all 5 condition types
         cond = pr.baseCondition;
         plantDropScale =
           weather === 'rainy'
             ? Math.max(0.7, dropScale)
             : cond === 'wet_risk'
-            ? 0.78
-            : cond === 'patek_early'
-            ? 0.42
+            ? 0.85
+            : cond === 'patek_early' || cond === 'patek_infected'
+            ? 0.5
             : 0.001;
         plantSpotScale =
-          cond === 'patek_early' ? 1.05 : cond === 'yellowing' ? 0.42 : 0.001;
+          cond === 'patek_infected' ? 1.45 : cond === 'patek_early' ? 1.05 : cond === 'yellowing' ? 0.44 : 0.001;
+        plantSevereSpotScale = cond === 'patek_infected' ? 1.25 : 0.001;
       }
+
+      // Apply slight physical wilt droop & height sag for bone-dry drought OR active patek blight
+      const blightDroop = cond === 'patek_infected' ? 0.055 : 0;
+      const wiltDroop = isUpperTerrace && isDrought ? 0.08 : blightDroop;
+      pr.group.rotation.z = sway + wiltDroop * 0.5;
+      pr.group.rotation.x = Math.cos(elapsed * 1.2 + pr.phase) * 0.015 + wiltDroop;
+      pr.group.scale.y = isUpperTerrace && isDrought ? 0.93 : cond === 'patek_infected' ? 0.96 : 1.0;
 
       pr.currentCondition = cond;
       const meta = LEAF_CONDITION_META[cond];
@@ -1736,24 +1865,58 @@ export function buildGardenScene(): GardenSceneController {
 
       pr.droplets.forEach((d) => d.scale.setScalar(plantDropScale));
       pr.patekSpots.forEach((s) => s.scale.setScalar(plantSpotScale));
+      pr.severeSpots.forEach((s) => s.scale.setScalar(plantSevereSpotScale));
     });
 
-    // 4. Watering Spray Particles
+    // 4. Animated Gembor (Manual Mode rises & sweeps back-and-forth over upper canopy!) + Watering Spray Particles
+    gemborLift = THREE.MathUtils.lerp(gemborLift, manualPouring ? 1 : 0, Math.min(1, dt * 5.5));
+    const sweepX = -0.55 + Math.sin(elapsed * 2.6) * 0.95; // sweeps back-and-forth over CAM + canopy plants (-1.50 .. +0.40)
+    const activeGemborX = THREE.MathUtils.lerp(gemborRestPos.x, sweepX, gemborLift);
+    const activeGemborY = THREE.MathUtils.lerp(gemborRestPos.y, 1.62, gemborLift) + Math.sin(elapsed * 5.2) * 0.04 * gemborLift;
+    const activeGemborZ = THREE.MathUtils.lerp(gemborRestPos.z, -0.62, gemborLift);
+    gemborGroup.position.set(activeGemborX, activeGemborY, activeGemborZ);
+    gemborGroup.rotation.set(
+      0,
+      THREE.MathUtils.lerp(-0.5, Math.PI * 0.48, gemborLift),
+      THREE.MathUtils.lerp(0, -1.36 - Math.sin(elapsed * 5.2) * 0.1, gemborLift)
+    );
+    gemborNozzleTip.getWorldPosition(gemborNozzleWorld);
+
     sprayDrops.forEach((sd) => {
       if (!metrics.isWatering) {
         sd.mesh.visible = false;
         return;
       }
       sd.mesh.visible = true;
-      sd.phase = (sd.phase + dt * 1.85) % 1;
-      const [ex, ey, ez] = emitterPositions[sd.emitterIdx];
+      sd.phase = (sd.phase + dt * 2.15) % 1;
       const t = sd.phase;
-      sd.mesh.position.set(
-        ex + sd.spreadX * t,
-        ey + 0.08 + Math.sin(t * Math.PI) * 0.24 - t * 0.28,
-        ez + sd.spreadZ * t
-      );
+      if (metrics.aiotMode) {
+        const [ex, ey, ez] = emitterPositions[sd.emitterIdx];
+        sd.mesh.position.set(
+          ex + sd.spreadX * 1.9 * t,
+          ey + 0.08 + Math.sin(t * Math.PI) * 0.24 - t * 0.28,
+          ez + sd.spreadZ * 1.8 * t
+        );
+      } else {
+        // Pour directly from rising/sweeping gembor brass rose nozzle onto upper chili canopy
+        sd.mesh.position.set(
+          gemborNozzleWorld.x + sd.spreadX * 1.45 * t,
+          gemborNozzleWorld.y - t * t * 0.85,
+          gemborNozzleWorld.z - 0.28 * t + sd.spreadZ * 1.2 * t
+        );
+      }
       sd.mesh.scale.setScalar(1 - t * 0.35);
+    });
+
+    // 4B. Spore-Dispersion Wind Particles drifting from Upper Terrace -> Lower Terrace
+    const showSpores = weather === 'foggy' || weather === 'rainy' || metrics.patekRiskPct >= 55;
+    sporeParticles.forEach((sp) => {
+      sp.mesh.visible = showSpores;
+      if (!showSpores) return;
+      sp.phase = (sp.phase + dt * 0.28) % 1;
+      const zDrift = -1.25 + sp.phase * 2.55;
+      const ySlope = 0.85 - sp.phase * 0.42 + sp.yOff + Math.sin(sp.phase * Math.PI * 2 + elapsed) * 0.06;
+      sp.mesh.position.set(sp.baseX + sp.phase * 0.42, ySlope, zDrift);
     });
 
     // 5. Rain Animation
@@ -1896,6 +2059,7 @@ export function buildGardenScene(): GardenSceneController {
     materials.forEach((m) => m.dispose());
     textures.forEach((t) => t.dispose());
     patekSpotMat.dispose();
+    severeSpotMat.dispose();
     ledOnMat.dispose();
     ledValveMat.dispose();
     ledCamMat.dispose();
