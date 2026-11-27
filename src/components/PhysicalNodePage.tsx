@@ -1,180 +1,21 @@
-import React, { useEffect, useRef, useState } from 'react';
-import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { ESP32_PARTS, EspPartKey } from '../data/espParts';
-import {
-  buildPhysicalNodeScene,
-  PhysicalNodeSceneController,
-} from '../three/buildPhysicalNodeScene';
+import React from 'react';
+import { ESP32_PARTS } from '../data/espParts';
 import { SimulationMetrics } from '../types/simulation';
+import { usePhysicalNodeScene } from './physical/usePhysicalNodeScene';
 
 interface PhysicalNodePageProps {
   metrics: SimulationMetrics;
 }
 
-const DEFAULT_CAM_POS: [number, number, number] = [4.0, 3.8, 7.8];
-const DEFAULT_CAM_TARGET: [number, number, number] = [0.25, 2.2, 0.15];
-
 export const PhysicalNodePage: React.FC<PhysicalNodePageProps> = ({ metrics }) => {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const controllerRef = useRef<PhysicalNodeSceneController | null>(null);
-
-  const [explodePct, setExplodePct] = useState(0);
-  const [selectedPart, setSelectedPart] = useState<EspPartKey | null>(null);
-  const resettingRef = useRef(false);
-
-  const stateRef = useRef({
-    metrics,
-    explodePct,
-  });
-  stateRef.current = {
-    metrics,
-    explodePct,
-  };
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const width = container.clientWidth || window.innerWidth;
-    const height = container.clientHeight || window.innerHeight;
-
-    const renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      alpha: true,
-      powerPreference: 'high-performance',
-    });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setSize(width, height);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    container.appendChild(renderer.domElement);
-
-    const camera = new THREE.PerspectiveCamera(36, width / height, 0.05, 60);
-    camera.position.set(...DEFAULT_CAM_POS);
-
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(...DEFAULT_CAM_TARGET);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.08;
-    controls.enablePan = true;
-    controls.zoomSpeed = 1.15;
-    controls.minDistance = 1.4;
-    controls.maxDistance = 18.0;
-    controls.minPolarAngle = 0.08;
-    controls.maxPolarAngle = Math.PI * 0.86;
-    controls.update();
-
-    const nodeScene = buildPhysicalNodeScene();
-    controllerRef.current = nodeScene;
-
-    const defaultPos = new THREE.Vector3(...DEFAULT_CAM_POS);
-    const defaultTarget = new THREE.Vector3(...DEFAULT_CAM_TARGET);
-
-    const raycaster = new THREE.Raycaster();
-    const pointer = new THREE.Vector2();
-    let downX = 0;
-    let downY = 0;
-
-    const handlePointerDown = (e: PointerEvent) => {
-      downX = e.clientX;
-      downY = e.clientY;
-    };
-
-    const handlePointerMove = (e: PointerEvent) => {
-      if (e.buttons > 0 && Math.hypot(e.clientX - downX, e.clientY - downY) > 6) {
-        resettingRef.current = false;
-      }
-    };
-
-    const handleWheel = () => {
-      resettingRef.current = false;
-    };
-
-    const handlePointerUp = (e: PointerEvent) => {
-      if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6) return;
-      const rect = renderer.domElement.getBoundingClientRect();
-      pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-      raycaster.setFromCamera(pointer, camera);
-      const hit = nodeScene.pickPart(raycaster);
-      setSelectedPart((prev) => (!hit ? null : prev === hit ? null : hit));
-    };
-
-    renderer.domElement.addEventListener('pointerdown', handlePointerDown);
-    renderer.domElement.addEventListener('pointermove', handlePointerMove);
-    renderer.domElement.addEventListener('pointerup', handlePointerUp);
-    renderer.domElement.addEventListener('wheel', handleWheel, { passive: true });
-
-    const resizeObserver = new ResizeObserver(() => {
-      if (!container) return;
-      const w = container.clientWidth;
-      const h = container.clientHeight;
-      if (w <= 0 || h <= 0) return;
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-      renderer.setSize(w, h);
-    });
-    resizeObserver.observe(container);
-
-    let animId = 0;
-    let lastTime = performance.now();
-    let elapsed = 0;
-
-    const animate = (now: number) => {
-      animId = requestAnimationFrame(animate);
-      const dt = Math.max(0, Math.min(0.05, (now - lastTime) / 1000));
-      lastTime = now;
-      elapsed += dt;
-
-      if (resettingRef.current) {
-        const k = 1 - Math.exp(-5.0 * dt);
-        camera.position.lerp(defaultPos, k);
-        controls.target.lerp(defaultTarget, k);
-        if (
-          camera.position.distanceTo(defaultPos) < 0.04 &&
-          controls.target.distanceTo(defaultTarget) < 0.04
-        ) {
-          camera.position.copy(defaultPos);
-          controls.target.copy(defaultTarget);
-          resettingRef.current = false;
-        }
-      }
-
-      controls.update();
-
-      const s = stateRef.current;
-      nodeScene.update(dt, elapsed, s.metrics, s.explodePct / 100);
-      renderer.render(nodeScene.scene, camera);
-    };
-
-    animId = requestAnimationFrame(animate);
-
-    return () => {
-      cancelAnimationFrame(animId);
-      resizeObserver.disconnect();
-      renderer.domElement.removeEventListener('pointerdown', handlePointerDown);
-      renderer.domElement.removeEventListener('pointermove', handlePointerMove);
-      renderer.domElement.removeEventListener('pointerup', handlePointerUp);
-      renderer.domElement.removeEventListener('wheel', handleWheel);
-      controls.dispose();
-      nodeScene.dispose();
-      renderer.dispose();
-      if (renderer.domElement.parentNode === container) {
-        container.removeChild(renderer.domElement);
-      }
-    };
-  }, []);
-
-  const isExploded = explodePct >= 50;
-  const partInfo = selectedPart ? ESP32_PARTS[selectedPart] : null;
+  const scene = usePhysicalNodeScene(metrics);
+  const partInfo = scene.selectedPart ? ESP32_PARTS[scene.selectedPart] : null;
 
   return (
-    <div className="circuit-stage">
+    <div className="relative h-full w-full overflow-hidden">
       {/* Free-Orbit 3D Hardware Unit Viewport (No Soil / No Terrace) */}
       <div
-        ref={containerRef}
+        ref={scene.containerRef}
         className="viewport-shell"
         aria-label="Unit Fisik Purwarupa Alat AIoT (Bisa Dibongkar)"
       />
@@ -191,7 +32,7 @@ export const PhysicalNodePage: React.FC<PhysicalNodePageProps> = ({ metrics }) =
               type="button"
               className="close-btn"
               aria-label="Tutup modal"
-              onClick={() => setSelectedPart(null)}
+              onClick={() => scene.setSelectedPart(null)}
             >
               ✕
             </button>
@@ -216,7 +57,7 @@ export const PhysicalNodePage: React.FC<PhysicalNodePageProps> = ({ metrics }) =
             <button
               type="button"
               className="dock-btn is-active"
-              onClick={() => setSelectedPart(null)}
+              onClick={() => scene.setSelectedPart(null)}
             >
               Tutup
             </button>
@@ -228,36 +69,34 @@ export const PhysicalNodePage: React.FC<PhysicalNodePageProps> = ({ metrics }) =
       <nav className="bottom-dock" aria-label="Kontrol Bongkar Alat Asli">
         <button
           type="button"
-          className={`dock-btn ${isExploded ? 'is-active' : 'is-primary'}`}
-          onClick={() => setExplodePct(isExploded ? 0 : 100)}
+          className={`dock-btn ${scene.isExploded ? 'is-active' : 'is-primary'}`}
+          onClick={() => scene.setExplodePct(scene.isExploded ? 0 : 100)}
         >
-          {isExploded ? 'Rakit Rapat' : 'Bongkar Alat'}
+          {scene.isExploded ? 'Rakit Rapat' : 'Bongkar Alat'}
         </button>
 
-        <div className="dock-divider" />
+        <div className="h-6 w-px bg-rule max-[780px]:hidden" />
 
-        <div className="time-control">
-          <span className="time-text">Bongkar {explodePct}%</span>
+        <div className="flex items-center gap-2 px-1">
+          <span className="min-w-[72px] font-mono text-[13px] font-bold whitespace-nowrap">Bongkar {scene.explodePct}%</span>
           <input
             type="range"
-            className="time-slider"
+            className="w-[120px] cursor-pointer accent-ink"
             aria-label="Persentase bongkar alat"
             min={0}
             max={100}
             step={1}
-            value={explodePct}
-            onChange={(e) => setExplodePct(parseInt(e.target.value, 10))}
+            value={scene.explodePct}
+            onChange={(e) => scene.setExplodePct(parseInt(e.target.value, 10))}
           />
         </div>
 
-        <div className="dock-divider" />
+        <div className="h-6 w-px bg-rule max-[780px]:hidden" />
 
         <button
           type="button"
           className="dock-btn"
-          onClick={() => {
-            resettingRef.current = true;
-          }}
+          onClick={scene.onResetCamera}
         >
           Reset Kamera
         </button>
