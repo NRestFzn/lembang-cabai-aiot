@@ -18,12 +18,21 @@ export const TOUR_STEPS_PERIPHERALS: CircuitTourStep[] = [
     ringPos: [2.86, 0.52, 0.0],
     frameSize: [2.62, 1.98],
     flowPaths: [
-      // Power only: 5V rail (col 42) feeds the ArduCam; image data travels
-      // over the MIPI CSI-2 flex to the host, NOT over UART2 (GPIO16/17).
-      // The former U0R/U0T jumper run (cols 49/50) is removed — see wiring.ts.
+      // Power: 5V rail tap (col 42) east along the south row (Z_I) to the
+      // cam's south edge (col 48) — matches the visible red wire in wiring.ts.
+      // Image data travels over the MIPI CSI-2 flex to the host, NOT over
+      // UART2 (GPIO16/17). The former U0R/U0T jumper run (cols 49/50) is
+      // removed — see wiring.ts.
       [
-        [col(42), 0.35, Z_A],
-        [col(44), 0.35, Z_A],
+        [col(42), 0.35, Z_I],
+        [col(48), 0.35, Z_I],
+      ],
+      // Data: CSI flex ribbon from the cam's FPC (x 2.04) west across the
+      // board to the ESP32 east edge — matches the visible orange ribbon.
+      [
+        [2.04, 0.34, 0],
+        [0.9, 0.32, 0],
+        [-0.15, 0.54, 0],
       ],
     ],
     durationSec: 5.5,
