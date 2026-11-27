@@ -523,48 +523,110 @@ export function buildCircuitWiring(
   // MIPI CSI-2 over its flex cable, so no UART2 camera link exists anymore;
   // GPIO16/17 are left spare and no jumper is drawn here.
 
-  // ArduCam CSI flex ribbon: flat orange FPC from the cam's FPC stub tip
-  // (world ≈ (2.04, 0.35, 0), where the stub in arducamModule.ts ends) west
-  // across the open breadboard to the ESP32's east edge (x = -0.15, PCB top
-  // y = 0.505). This is a VISUAL link to the controller — the CSI flex
-  // carries image data to the host, it is not a breadboard jumper, so it has
-  // no bb collars and does not use addBBJumper. It lies flat at y = 0.30
-  // (above the board, below the other wire planes at y 0.34..0.46, so the
-  // LM2596 OUT wires at x = bbCol(37/38) pass over it cleanly) and rises
-  // onto the ESP32 PCB edge at the west end. Tagged ESP32CAM so clicking
-  // the ribbon selects the camera, like the stub on the module itself.
+  // ArduCam CSI flex ribbon: narrow orange FPC from the cam's FPC stub tip
+  // (world ≈ (2.04, 0.35, 0), where the stub in arducamModule.ts ends),
+  // routed along the SOUTH edge of the breadboard to the ESP32's pin-header
+  // side — it does NOT go to the USB-C port, and it does NOT run straight
+  // across the middle of the breadboard.
+  //
+  // Why not USB: the ESP32's USB-C receptacle (J1) sits at world
+  // (-0.30, 0.505, 0) — local (0, pcbTop, 1.9) in esp32Module.ts, rotated
+  // by the module's PI/2 yaw and placed at bbCol(24) = -2.20 — with its
+  // opening facing +X, straight at the cam. The old ribbon ran west at
+  // z = 0 and ended at x = -0.15, dead inside the USB shell (x -0.53..-0.07,
+  // z -0.29..0.29), so in the top-down view it looked plugged into USB.
+  // USB is for power/programming, not camera data, so the ribbon must stay
+  // clear of it: every point of the new route is >= 0.35 from the USB
+  // shell, and it lands on the H1 pin-header row instead.
+  //
+  // Route (0.22 wide, visibly narrower than the old 0.34):
+  //   S1 south from the stub tip (2.04, 0.30, 0) to (2.04, 0.30, 0.75),
+  //   S2 west along the south edge at z = 0.75 to x = 0.40,
+  //   S3 rise from (0.40, 0.30, 0.75) to (-0.20, 0.55, 0.75) — it clears
+  //   the ESP32 PCB top (0.505, decal 0.508) before the board edge at
+  //   x = -0.15 (ribbon bottom ≈ 0.52 there),
+  //   S4 flat on the PCB at y = 0.55 to x = -1.10,
+  //   S5 short jog south to the H1 pin row (z = 0.88, world x -1.10 =
+  //   local z 1.10, pin 13), ending in a dark FPC connector collar on the
+  //   header. This is a VISUAL link to the controller — the ESP32 has no
+  //   CSI port, so the ribbon is shown as a flex to the pin-header side,
+  //   not as a breadboard jumper (no bb collars, no addBBJumper).
+  //   S2 passes UNDER the LM2596 OUT+/OUT- and DS18B20 DQ vertical wires
+  //   (y 0.44..0.46, ribbon top 0.31, >= 0.11 clearance), like other
+  //   crossings in this scene — it does not touch them.
+  // Tagged ESP32CAM so clicking the ribbon selects the camera, like the
+  // stub on the module itself.
   {
     const csiMat = getWireMat('#d97706');
     const csiTraceMat = getWireMat('#92400e');
     const csiRibbon = new THREE.Group();
     harnessGroup.add(csiRibbon);
-    // Flat run: x 2.08 -> 0.14 at y 0.30, 0.34 wide to match the stub.
-    const csiFlat = factory.createOutlinedMesh(
-      trackGeo(new THREE.BoxGeometry(1.94, 0.02, 0.34)),
+    // S1: south from the stub tip to the south edge lane.
+    const csiSouth = factory.createOutlinedMesh(
+      trackGeo(new THREE.BoxGeometry(0.22, 0.02, 0.75)),
       csiMat,
       1.05
     );
-    csiFlat.position.set(1.11, 0.3, 0);
-    csiRibbon.add(csiFlat);
-    // Fine trace lines along the flat run, matching the stub.
-    [-0.11, 0, 0.11].forEach((dz) => {
+    csiSouth.position.set(2.04, 0.3, 0.375);
+    csiRibbon.add(csiSouth);
+    [-0.07, 0.07].forEach((dx) => {
       const trace = new THREE.Mesh(
-        trackGeo(new THREE.BoxGeometry(1.94, 0.006, 0.02)),
+        trackGeo(new THREE.BoxGeometry(0.02, 0.006, 0.73)),
         csiTraceMat
       );
-      trace.position.set(1.11, 0.312, dz);
+      trace.position.set(2.04 + dx, 0.312, 0.375);
       csiRibbon.add(trace);
     });
-    // Rising end onto the ESP32 east edge: from (0.14, 0.30) up to
-    // (-0.15, 0.52), just above the ESP32 PCB top (0.505).
-    const csiRise = factory.createOutlinedMesh(
-      trackGeo(new THREE.BoxGeometry(0.37, 0.02, 0.34)),
+    // S2: west along the south edge at z = 0.75.
+    const csiWest = factory.createOutlinedMesh(
+      trackGeo(new THREE.BoxGeometry(1.64, 0.02, 0.22)),
       csiMat,
       1.05
     );
-    csiRise.position.set(0.0, 0.41, 0);
-    csiRise.rotation.z = -0.65;
+    csiWest.position.set(1.22, 0.3, 0.75);
+    csiRibbon.add(csiWest);
+    [-0.07, 0.07].forEach((dz) => {
+      const trace = new THREE.Mesh(
+        trackGeo(new THREE.BoxGeometry(1.62, 0.006, 0.02)),
+        csiTraceMat
+      );
+      trace.position.set(1.22, 0.312, 0.75 + dz);
+      csiRibbon.add(trace);
+    });
+    // S3: rise onto the ESP32 PCB, clear of the board edge and of USB
+    // (nearest approach to the USB shell is 0.35 in z, at the rise).
+    const csiRise = factory.createOutlinedMesh(
+      trackGeo(new THREE.BoxGeometry(0.65, 0.02, 0.22)),
+      csiMat,
+      1.05
+    );
+    csiRise.position.set(0.1, 0.425, 0.75);
+    csiRise.rotation.z = -0.395;
     csiRibbon.add(csiRise);
+    // S4: flat on the PCB at y = 0.55 to x = -1.10.
+    const csiTop = factory.createOutlinedMesh(
+      trackGeo(new THREE.BoxGeometry(0.9, 0.02, 0.22)),
+      csiMat,
+      1.05
+    );
+    csiTop.position.set(-0.65, 0.55, 0.75);
+    csiRibbon.add(csiTop);
+    // S5: short jog south onto the H1 pin-header row (z = 0.88).
+    const csiJog = factory.createOutlinedMesh(
+      trackGeo(new THREE.BoxGeometry(0.22, 0.02, 0.13)),
+      csiMat,
+      1.05
+    );
+    csiJog.position.set(-1.1, 0.55, 0.815);
+    csiRibbon.add(csiJog);
+    // FPC connector collar sitting on the H1 header.
+    const csiConn = factory.createOutlinedMesh(
+      trackGeo(new THREE.BoxGeometry(0.28, 0.09, 0.32)),
+      icDarkMat,
+      1.05
+    );
+    csiConn.position.set(-1.1, 0.59, 0.88);
+    csiRibbon.add(csiConn);
     tagEspPart(csiRibbon, 'ESP32CAM');
   }
 
