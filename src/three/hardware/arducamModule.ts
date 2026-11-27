@@ -27,7 +27,7 @@ export function buildArducamModule(kit: KitBuilderContext): THREE.Group {
     greenPcbMat,
     1.022
   );
-  camPcb.position.y = pcbH / 2;
+  camPcb.position.y = 0;
   camGroup.add(camPcb);
 
   // 4 mounting holes in the corners: gold ring + dark hole.
@@ -67,91 +67,68 @@ export function buildArducamModule(kit: KitBuilderContext): THREE.Group {
   silkPlane.position.set(0, pcbTop + 0.003, 0.38);
   camGroup.add(silkPlane);
 
-  // Sensor flex: thin black strip under the lens housing running to the
-  // CSI connector, with tiny gold contacts at its far end.
-  const sensorFlex = kit.factory.createOutlinedMesh(
-    kit.trackGeo(new THREE.BoxGeometry(0.3, 0.02, 0.22)),
-    kit.materials.icDarkMat,
+  // Compact copper-trace MIPI CSI flex from the lens housing to the slim ZIF latch
+  // along the -Z (header/wire) edge.
+  const ribbonGrp = kit.registerExplodable('ESP32CAM', 0, -0.25, 0.35, camGroup, pcbTop);
+  const fpcMat = kit.factory.createToon('#d97706');
+  const fpcTraceMat = kit.factory.createToon('#92400e');
+  const ribbonFlat = kit.factory.createOutlinedMesh(
+    kit.trackGeo(new THREE.BoxGeometry(0.2, 0.014, 0.1)),
+    fpcMat,
     1.05
   );
-  sensorFlex.position.set(0, pcbTop + 0.01, -0.32);
-  camGroup.add(sensorFlex);
-  [-0.09, 0, 0.09].forEach((px) => {
-    const contact = kit.factory.createOutlinedMesh(
-      kit.trackGeo(new THREE.BoxGeometry(0.05, 0.012, 0.05)),
-      kit.materials.goldMat,
-      1.08
+  ribbonFlat.position.set(0, 0.012, 0);
+  ribbonGrp.add(ribbonFlat);
+  [-0.06, 0, 0.06].forEach((px) => {
+    const trace = new THREE.Mesh(
+      kit.trackGeo(new THREE.BoxGeometry(0.016, 0.006, 0.09)),
+      fpcTraceMat
     );
-    contact.position.set(px, pcbTop + 0.026, -0.4);
-    camGroup.add(contact);
+    trace.position.set(px, 0.022, 0);
+    ribbonGrp.add(trace);
   });
+  const zifLatch = kit.factory.createOutlinedMesh(
+    kit.trackGeo(new THREE.BoxGeometry(0.24, 0.036, 0.045)),
+    kit.materials.icDarkMat,
+    1.06
+  );
+  zifLatch.position.set(0, 0.02, -0.05);
+  ribbonGrp.add(zifLatch);
 
   // Square metal lens housing in the centre + round black lens.
   const lensGrp = kit.registerExplodable('ESP32CAM', 0, 0, 0.5, camGroup, pcbTop);
   const housing = kit.factory.createOutlinedMesh(
-    kit.trackGeo(createRoundedBoxGeo(0.48, 0.16, 0.48, 0.03)),
+    kit.trackGeo(createRoundedBoxGeo(0.42, 0.15, 0.42, 0.03)),
     kit.materials.metalSilverMat,
     1.05
   );
-  housing.position.y = 0.08;
+  housing.position.y = 0.075;
   lensGrp.add(housing);
 
   const barrel = kit.factory.createOutlinedMesh(
-    kit.trackGeo(new THREE.CylinderGeometry(0.17, 0.19, 0.09, 18)),
+    kit.trackGeo(new THREE.CylinderGeometry(0.15, 0.17, 0.085, 18)),
     kit.materials.icDarkMat,
     1.05
   );
-  barrel.position.y = 0.2;
+  barrel.position.y = 0.19;
   lensGrp.add(barrel);
 
   const lensRim = new THREE.Mesh(
-    kit.trackGeo(new THREE.RingGeometry(0.1, 0.15, 18)),
+    kit.trackGeo(new THREE.RingGeometry(0.09, 0.135, 18)),
     kit.materials.metalSilverMat
   );
   lensRim.rotation.x = -Math.PI / 2;
-  lensRim.position.y = 0.247;
+  lensRim.position.y = 0.235;
   lensGrp.add(lensRim);
 
   const lensGlassMat = kit.trackMat(new THREE.MeshBasicMaterial({ color: '#0b1526' }));
   const lensGlass = new THREE.Mesh(
-    kit.trackGeo(new THREE.CircleGeometry(0.1, 18)),
+    kit.trackGeo(new THREE.CircleGeometry(0.09, 18)),
     lensGlassMat
   );
   lensGlass.rotation.x = -Math.PI / 2;
-  lensGlass.position.y = 0.249;
+  lensGlass.position.y = 0.237;
   lensGrp.add(lensGlass);
-
-  // Orange CSI FPC ribbon cable off the top (-Z) edge, slightly bent/angled,
-  // with fine trace lines. Group origin sits at the board edge (z = -0.44)
-  // so the flat run overlaps the edge and runs outward from the board.
-  const ribbonGrp = kit.registerExplodable('ESP32CAM', 0, -0.44, 0.35, camGroup, pcbTop);
-  const fpcMat = kit.factory.createToon('#d97706');
-  const fpcTraceMat = kit.factory.createToon('#92400e');
-  const ribbonFlat = kit.factory.createOutlinedMesh(
-    kit.trackGeo(new THREE.BoxGeometry(0.34, 0.02, 0.3)),
-    fpcMat,
-    1.05
-  );
-  ribbonFlat.position.set(0, 0.03, -0.13);
-  ribbonGrp.add(ribbonFlat);
-  // Bent rising segment at the far end.
-  const ribbonBent = kit.factory.createOutlinedMesh(
-    kit.trackGeo(new THREE.BoxGeometry(0.34, 0.02, 0.3)),
-    fpcMat,
-    1.05
-  );
-  ribbonBent.position.set(0, 0.09, -0.34);
-  ribbonBent.rotation.x = -0.42;
-  ribbonGrp.add(ribbonBent);
-  // Fine trace lines along the flat run.
-  [-0.11, 0, 0.11].forEach((px) => {
-    const trace = new THREE.Mesh(
-      kit.trackGeo(new THREE.BoxGeometry(0.02, 0.006, 0.28)),
-      fpcTraceMat
-    );
-    trace.position.set(px, 0.043, -0.13);
-    ribbonGrp.add(trace);
-  });
 
   tagEspPart(camGroup, 'ESP32CAM');
   return camGroup;

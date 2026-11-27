@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { createHardwareModulesKit, HardwareModulesKit } from '../hardwareModules';
+import { createCanvasDecal } from '../hardware/decals';
+import { tagEspPart } from '../hardware/tagging';
 import { CircuitContext } from './context';
 
 export interface ModuleTops {
@@ -65,8 +67,49 @@ export function placeHardwareModules(
   dsGroup.position.set(-2.0, 0, 4.1);
   sdGroup.position.set(bbCol(56) + 0.11, 0.14, 0.02);
   sdGroup.rotation.y = -Math.PI / 2;
-  camGroup.position.set(bbCol(47) + 0.11, 0.14, 0);
-  camGroup.rotation.y = Math.PI / 2;
+  camGroup.position.set(bbCol(47) + 0.11, 0.225, 0);
+  camGroup.rotation.y = 0;
+
+  // Mount 4 breadboard header pins along the north (-Z) edge (local Z = -0.44 -> world Z = Z_E = -0.44)
+  // directly aligned with the copper CSI flex traces and breadboard columns 46..49 (TX, RX, 5V, GND).
+  const camPinMat = factory.createToon('#e2bd56');
+  const camSpacerGeo = trackGeo(new THREE.BoxGeometry(0.11, 0.07, 0.11));
+  const camShaftGeo = trackGeo(new THREE.BoxGeometry(0.048, 0.3, 0.048));
+  const camPadGeo = trackGeo(new THREE.CylinderGeometry(0.062, 0.062, 0.012, 12));
+  const camHdrGroup = new THREE.Group();
+  [-0.33, -0.11, 0.11, 0.33].forEach((px) => {
+    const sp = factory.createOutlinedMesh(camSpacerGeo, icDarkMat, 1.08);
+    sp.position.set(px, -0.025, -0.44);
+    camHdrGroup.add(sp);
+    const shaft = factory.createOutlinedMesh(camShaftGeo, camPinMat, 1.08);
+    shaft.position.set(px, -0.03, -0.44);
+    camHdrGroup.add(shaft);
+    const pad = new THREE.Mesh(camPadGeo, camPinMat);
+    pad.position.set(px, 0.067, -0.44);
+    camHdrGroup.add(pad);
+  });
+  const camPinTex = createCanvasDecal(320, 64, (c) => {
+    c.fillStyle = '#f8fafc';
+    c.font = 'bold 26px ui-monospace, monospace';
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    const lbls = ['TX', 'RX', '5V', 'GND'];
+    const pxs = [-0.33, -0.11, 0.11, 0.33];
+    pxs.forEach((px, idx) => {
+      const u = ((px + 0.44) / 0.88) * 320;
+      c.fillText(lbls[idx], u, 32);
+    });
+  });
+  textures.push(camPinTex);
+  const camPinDecal = new THREE.Mesh(
+    trackGeo(new THREE.PlaneGeometry(0.88, 0.1)),
+    trackMat(new THREE.MeshBasicMaterial({ map: camPinTex, transparent: true }))
+  );
+  camPinDecal.rotation.x = -Math.PI / 2;
+  camPinDecal.position.set(0, 0.068, -0.355);
+  camHdrGroup.add(camPinDecal);
+  tagEspPart(camHdrGroup, 'ESP32CAM');
+  camGroup.add(camHdrGroup);
   relayGroup.position.set(7.4, 0, -4.2);
   pumpGroup.position.set(9.4, 0, -1.2);
   solGroup.position.set(9.4, 0, 1.6);

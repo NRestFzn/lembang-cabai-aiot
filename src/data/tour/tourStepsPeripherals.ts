@@ -1,6 +1,6 @@
 // Peripherals + actuators: camera, MicroSD logger, relay and the
 // pump/solenoid steps (tour stages 09–12), on the right of the board.
-import { col, Z_A, Z_B, Z_C, Z_I, Z_J } from './tourLayout';
+import { col, Z_A, Z_B, Z_C, Z_D, Z_I, Z_J, Z_TOP_5V } from './tourLayout';
 import { CircuitTourStep } from './tourTypes';
 
 export const TOUR_STEPS_PERIPHERALS: CircuitTourStep[] = [
@@ -10,29 +10,33 @@ export const TOUR_STEPS_PERIPHERALS: CircuitTourStep[] = [
     stage: '09 / 12 · Konfirmasi Visual Daun',
     title: 'ArduCam Camera Module 3 (IMX708 12MP)',
     description:
-      'Mengambil daya 5V dari rail atas (kolom 42). Saat skor patek tinggi, ArduCam Camera Module 3 (Sony IMX708 12MP, 4608×2592) memotret gejala bercak patek secara visual lewat kabel flex MIPI CSI-2 ke host-nya — kamera ini tidak dibangunkan lewat UART2.',
-    flowSummary: 'CSI flex ↔ host (MIPI CSI-2) · 5V dari rail atas (Kolom 42)',
+      'Terpasang di breadboard (kolom 46–49): mengambil 5V & GND dari rail atas serta terhubung langsung ke ESP32 via jalur data GPIO17 & GPIO16 untuk konfirmasi visual bercak patek.',
+    flowSummary: 'ArduCam TX/RX (Kolom 46–47) ↔ ESP32 GPIO17/16 · 5V/GND (Kolom 48–49)',
     accentColor: '#a855f7',
-    target: [2.2, 0.2, 0.15],
-    camPos: [2.2, 10.0, 0.5],
-    ringPos: [2.86, 0.52, 0.0],
-    frameSize: [2.62, 1.98],
+    target: [2.2, 0.2, 0.0],
+    camPos: [2.2, 10.0, 0.45],
+    ringPos: [2.97, 0.32, 0.0],
+    frameSize: [1.14, 1.18],
     flowPaths: [
-      // Power: 5V rail tap (col 42) east along the south row (Z_I) to the
-      // cam's south edge (col 48) — matches the visible red wire in wiring.ts.
-      // Image data travels over the MIPI CSI-2 flex to the host, NOT over
-      // UART2 (GPIO16/17). The former U0R/U0T jumper run (cols 49/50) is
-      // removed — see wiring.ts.
       [
-        [col(42), 0.35, Z_I],
-        [col(48), 0.35, Z_I],
+        [col(48), 0.22, Z_TOP_5V],
+        [col(48), 0.38, Z_TOP_5V],
+        [col(48), 0.38, Z_D],
+        [col(48), 0.22, Z_D],
       ],
-      // Data: CSI flex ribbon from the cam's FPC (x 2.04) west across the
-      // board to the ESP32 east edge — matches the visible orange ribbon.
       [
-        [2.04, 0.34, 0],
-        [0.9, 0.32, 0],
-        [-0.15, 0.54, 0],
+        [col(46), 0.22, Z_A],
+        [col(46), 0.34, Z_A],
+        [col(25), 0.34, Z_A],
+        [col(25), 0.22, Z_A],
+      ],
+      [
+        [col(47), 0.22, Z_B],
+        [col(47), 0.35, Z_B],
+        [col(47), 0.35, -1.21],
+        [col(26), 0.35, -1.21],
+        [col(26), 0.35, Z_B],
+        [col(26), 0.22, Z_B],
       ],
     ],
     durationSec: 5.5,

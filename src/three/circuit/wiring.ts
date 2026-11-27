@@ -483,152 +483,27 @@ export function buildCircuitWiring(
   addBBJumper(9, Z_B, 18, Z_B, '#3b82f6', 0.34);
   addBBJumper(10, Z_A, 21, Z_A, '#06b6d4', 0.34);
 
-  // ArduCam Camera Module 3 — VISIBLE power + CSI flex.
-  // Bug fix: the old power jumpers started at c44/c45 (x 2.20/2.42), but the
-  // ArduCam board is smaller than the old ESP32-CAM and only spans x 2.49..3.45
-  // (cols ~46..49, z -0.5..0.5), so both wires missed the board entirely and
-  // the cam looked floating in the top-down view. Both power wires now start
-  // ON the cam's south edge (z = 0.48, just inside the board edge, y = 0.24
-  // just above the PCB top) so a viewer can trace them out of the board:
-  // 5V (red, col 48) runs south to Z_I then west to the Top +5V Rail (c42,
-  // fed by ESP32 VIN), GND (black, col 49) runs straight south to the Bot
-  // -GND Rail. No bb collars at the board end — the wires emerge from the
-  // board edge, not from a breadboard hole.
+  // ArduCam Camera Module 3 (c46..c49, plugged via 4-pin header at Z_E):
+  // Connected via clean orthogonal breadboard jumpers just like BME280 & MicroSD:
+  //   c46 TX/TRIG -> ESP32 GPIO17 (c25, along Z_A)
+  //   c47 RX/DATA -> ESP32 GPIO16 (c26, routed via clean lane z = -1.21 avoiding c31 3V3)
+  //   c48 5V      -> Top +5V Rail (c48)
+  //   c49 GND     -> Top -GND Rail (c49)
+  addBBJumper(49, Z_C, 49, Z_TOP_GND, '#1f2937', 0.35);
+  addBBJumper(48, Z_D, 48, Z_TOP_5V, '#dc2626', 0.38);
+  addBBJumper(46, Z_A, 25, Z_A, '#06b6d4', 0.34);
   addAssembledWire(
     [
-      [bbCol(48), 0.24, 0.48],
-      [bbCol(48), 0.36, Z_I],
-      [bbCol(42), 0.36, Z_I],
-      [bbCol(42), 0.36, Z_TOP_5V],
-      [bbCol(42), bbTop, Z_TOP_5V],
+      [bbCol(47), bbTop, Z_B],
+      [bbCol(47), 0.35, Z_B],
+      [bbCol(47), 0.35, -1.21],
+      [bbCol(26), 0.35, -1.21],
+      [bbCol(26), 0.35, Z_B],
+      [bbCol(26), bbTop, Z_B],
     ],
-    '#dc2626',
-    { bbEnd: true }
+    '#a855f7',
+    { bbStart: true, bbEnd: true }
   );
-  // ArduCam GND (col 49, south edge) -> Bot -GND Rail (col 49). Routed at
-  // x = bbCol(49) so it never crosses the 5V run (which ends at col 48);
-  // the relay IN1/IN2 runs at z = 1.46/1.58 hop over it via the engine's
-  // crossing logic when they are added in section E.
-  addAssembledWire(
-    [
-      [bbCol(49), 0.24, 0.48],
-      [bbCol(49), 0.36, Z_BOT_GND],
-      [bbCol(49), bbTop, Z_BOT_GND],
-    ],
-    '#1f2937',
-    { bbEnd: true }
-  );
-  // REMOVED (ArduCam swap): former ESP32-CAM UART2 jumpers U0R (c49) -> ESP32
-  // GPIO17 (c25) and U0T (c50) -> ESP32 GPIO16 (c26). The ArduCam IMX708 talks
-  // MIPI CSI-2 over its flex cable, so no UART2 camera link exists anymore;
-  // GPIO16/17 are left spare and no jumper is drawn here.
-
-  // ArduCam CSI flex ribbon: narrow orange FPC from the cam's FPC stub tip
-  // (world ≈ (2.04, 0.35, 0), where the stub in arducamModule.ts ends),
-  // routed along the SOUTH edge of the breadboard to the ESP32's pin-header
-  // side — it does NOT go to the USB-C port, and it does NOT run straight
-  // across the middle of the breadboard.
-  //
-  // Why not USB: the ESP32's USB-C receptacle (J1) sits at world
-  // (-0.30, 0.505, 0) — local (0, pcbTop, 1.9) in esp32Module.ts, rotated
-  // by the module's PI/2 yaw and placed at bbCol(24) = -2.20 — with its
-  // opening facing +X, straight at the cam. The old ribbon ran west at
-  // z = 0 and ended at x = -0.15, dead inside the USB shell (x -0.53..-0.07,
-  // z -0.29..0.29), so in the top-down view it looked plugged into USB.
-  // USB is for power/programming, not camera data, so the ribbon must stay
-  // clear of it: every point of the new route is >= 0.35 from the USB
-  // shell, and it lands on the H1 pin-header row instead.
-  //
-  // Route (0.22 wide, visibly narrower than the old 0.34):
-  //   S1 south from the stub tip (2.04, 0.30, 0) to (2.04, 0.30, 0.75),
-  //   S2 west along the south edge at z = 0.75 to x = 0.40,
-  //   S3 rise from (0.40, 0.30, 0.75) to (-0.20, 0.55, 0.75) — it clears
-  //   the ESP32 PCB top (0.505, decal 0.508) before the board edge at
-  //   x = -0.15 (ribbon bottom ≈ 0.52 there),
-  //   S4 flat on the PCB at y = 0.55 to x = -1.10,
-  //   S5 short jog south to the H1 pin row (z = 0.88, world x -1.10 =
-  //   local z 1.10, pin 13), ending in a dark FPC connector collar on the
-  //   header. This is a VISUAL link to the controller — the ESP32 has no
-  //   CSI port, so the ribbon is shown as a flex to the pin-header side,
-  //   not as a breadboard jumper (no bb collars, no addBBJumper).
-  //   S2 passes UNDER the LM2596 OUT+/OUT- and DS18B20 DQ vertical wires
-  //   (y 0.44..0.46, ribbon top 0.31, >= 0.11 clearance), like other
-  //   crossings in this scene — it does not touch them.
-  // Tagged ESP32CAM so clicking the ribbon selects the camera, like the
-  // stub on the module itself.
-  {
-    const csiMat = getWireMat('#d97706');
-    const csiTraceMat = getWireMat('#92400e');
-    const csiRibbon = new THREE.Group();
-    harnessGroup.add(csiRibbon);
-    // S1: south from the stub tip to the south edge lane.
-    const csiSouth = factory.createOutlinedMesh(
-      trackGeo(new THREE.BoxGeometry(0.22, 0.02, 0.75)),
-      csiMat,
-      1.05
-    );
-    csiSouth.position.set(2.04, 0.3, 0.375);
-    csiRibbon.add(csiSouth);
-    [-0.07, 0.07].forEach((dx) => {
-      const trace = new THREE.Mesh(
-        trackGeo(new THREE.BoxGeometry(0.02, 0.006, 0.73)),
-        csiTraceMat
-      );
-      trace.position.set(2.04 + dx, 0.312, 0.375);
-      csiRibbon.add(trace);
-    });
-    // S2: west along the south edge at z = 0.75.
-    const csiWest = factory.createOutlinedMesh(
-      trackGeo(new THREE.BoxGeometry(1.64, 0.02, 0.22)),
-      csiMat,
-      1.05
-    );
-    csiWest.position.set(1.22, 0.3, 0.75);
-    csiRibbon.add(csiWest);
-    [-0.07, 0.07].forEach((dz) => {
-      const trace = new THREE.Mesh(
-        trackGeo(new THREE.BoxGeometry(1.62, 0.006, 0.02)),
-        csiTraceMat
-      );
-      trace.position.set(1.22, 0.312, 0.75 + dz);
-      csiRibbon.add(trace);
-    });
-    // S3: rise onto the ESP32 PCB, clear of the board edge and of USB
-    // (nearest approach to the USB shell is 0.35 in z, at the rise).
-    const csiRise = factory.createOutlinedMesh(
-      trackGeo(new THREE.BoxGeometry(0.65, 0.02, 0.22)),
-      csiMat,
-      1.05
-    );
-    csiRise.position.set(0.1, 0.425, 0.75);
-    csiRise.rotation.z = -0.395;
-    csiRibbon.add(csiRise);
-    // S4: flat on the PCB at y = 0.55 to x = -1.10.
-    const csiTop = factory.createOutlinedMesh(
-      trackGeo(new THREE.BoxGeometry(0.9, 0.02, 0.22)),
-      csiMat,
-      1.05
-    );
-    csiTop.position.set(-0.65, 0.55, 0.75);
-    csiRibbon.add(csiTop);
-    // S5: short jog south onto the H1 pin-header row (z = 0.88).
-    const csiJog = factory.createOutlinedMesh(
-      trackGeo(new THREE.BoxGeometry(0.22, 0.02, 0.13)),
-      csiMat,
-      1.05
-    );
-    csiJog.position.set(-1.1, 0.55, 0.815);
-    csiRibbon.add(csiJog);
-    // FPC connector collar sitting on the H1 header.
-    const csiConn = factory.createOutlinedMesh(
-      trackGeo(new THREE.BoxGeometry(0.28, 0.09, 0.32)),
-      icDarkMat,
-      1.05
-    );
-    csiConn.position.set(-1.1, 0.59, 0.88);
-    csiRibbon.add(csiConn);
-    tagEspPart(csiRibbon, 'ESP32CAM');
-  }
 
   // MicroSD (c54..c59): GND (c54) -> Top -GND, VCC (c55) -> Top +5V
   addBBJumper(54, Z_B, 54, Z_TOP_GND, '#1f2937', 0.35);
